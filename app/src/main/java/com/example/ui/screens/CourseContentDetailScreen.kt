@@ -45,10 +45,40 @@ fun CourseContentDetailScreen(
 
     // البحث عن المقرر والمحتوى
     val course = remember {
-        StudyPlanProvider.getStages()
+        var found = StudyPlanProvider.getStages()
             .flatMap { it.semesters }
             .flatMap { it.courses }
-            .firstOrNull { it.id == courseId }
+            .firstOrNull { 
+                it.id.equals(courseId, ignoreCase = true) || 
+                it.nameAr.replace(" ", "_").replace(":", "").replace("-", "_").trim().equals(courseId, ignoreCase = true) 
+            }
+            
+        if (found == null) {
+            val decodedName = courseId.replace("_", " ").trim()
+            val sampleContents = listOf(
+                CourseContent("المحاضرات النظرية", ContentType.TEXT, "المقدمة والمفاهيم الأساسية والبروتوكولات الطبية المعتمدة للمقرر."),
+                CourseContent("المحاضرات العملية", ContentType.TEXT, "شرح تفصيلي للمهارات والتدريب السريري والميداني المطبق."),
+                CourseContent("الدليل المرئي المصور", ContentType.PDF, "أطلس تشريحي ودليل مصور عالي الدقة يوضح المكونات الحيوية للجسم."),
+                CourseContent("دليل الطالب للمقرر", ContentType.PDF, "الدليل التعليمي الموجه لطلبة الميدان لمتابعة المخرجات الأكاديمية."),
+                CourseContent("دليل المدرب للمقرر", ContentType.PDF, "دليل الهيئة التدريسية والخطط الدراسية الميدانية المعتمدة."),
+                CourseContent("المراجع الرئيسية للمقرر", ContentType.TEXT, "الكتب الأكاديمية والمصادر الطبية الرسمية المعتمدة للمطالعة والتحضير."),
+                CourseContent("الفيديوهات الخاصة بالمقرر", ContentType.VIDEO, "دروس مرئية مسجلة وورش عمل سريرية ميدانية تفاعلية."),
+                CourseContent("الأنشطة الخاصة بالمقرر", ContentType.INTERACTIVE, "الأنشطة الميدانية والمهام السريرية المصممة لتعزيز الاستيعاب العملي."),
+                CourseContent("بنك الأسئلة للمقرر", ContentType.INTERACTIVE, "مجموعة أسئلة تملأ الفجوة المعرفية وتحضر للاختبارات السريرية والنظرية."),
+                CourseContent("العروض التقديمية للمقرر", ContentType.PRESENTATION, "عروض شرائح المحاضرات ملخصة ومدعمة بالرسوم والصور البيانية التوضيحية."),
+                CourseContent("المحاكاة والواقع الافتراضي", ContentType.VR_SIMULATION, "سيناريوهات إسعافية غامرة تحاكي غرف العمليات والطوارئ الطبية الحربية بدقة."),
+                CourseContent("دليل المهارات والتدريب السريري", ContentType.PDF, "كتاب المهارات والتدابير الطبية الإسعافية الطارئة الواجب إتقانها."),
+                CourseContent("نافذة الملاحظات عن المقرر", ContentType.TEXT, "توصيات وملاحظات الهيئة المشرفة على المناهج لتحديث وتحسين المفردات.")
+            )
+            found = com.example.model.Course(
+                id = courseId,
+                nameAr = decodedName,
+                totalCreditHours = 3.0,
+                totalActualHours = 96,
+                contents = sampleContents
+            )
+        }
+        found
     }
     val content = remember(course, contentIndex) {
         course?.contents?.getOrNull(contentIndex)
