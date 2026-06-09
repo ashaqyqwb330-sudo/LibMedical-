@@ -194,6 +194,9 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onNavigateToBooks = { chapterName ->
                     navController.navigate("books/${Uri.encode(chapterName)}")
+                },
+                onNavigateToCourseDetail = { courseId ->
+                    navController.navigate("course/${Uri.encode(courseId)}")
                 }
             )
         }

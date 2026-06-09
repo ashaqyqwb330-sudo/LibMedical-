@@ -1,4 +1,3 @@
-// @builder:file app/src/main/java/com/example/ui/screens/DirectoryScreen.kt
 package com.example.ui.screens
 
 import android.content.Intent
@@ -26,7 +25,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -45,7 +43,9 @@ fun DirectoryScreen(
     onBack: () -> Unit,
     onNavigateToPdf: (BookEntry) -> Unit,
     onNavigateToChapter: (String, String) -> Unit,
-    onNavigateToBooks: (String) -> Unit
+    onNavigateToBooks: (String) -> Unit,
+    // الجديد: للانتقال إلى شاشة المحتويات الـ 12
+    onNavigateToCourseDetail: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
@@ -80,6 +80,7 @@ fun DirectoryScreen(
             Toast.makeText(context, "التعرف على الصوت غير مدعوم على جهازك", Toast.LENGTH_SHORT).show()
         }
     }
+    
     var selectedDeviceDetail by remember { mutableStateOf<String?>(null) }
     var selectedBookDetail by remember { mutableStateOf<BookEntry?>(null) }
 
@@ -87,7 +88,7 @@ fun DirectoryScreen(
     val chapters = remember { repository.getChapters() }
     val courseGuides = remember { repository.allBooks.filter { it.type == "book" || it.type == "general" } }
     
-    // Dynamically extract all hospital devices and map them to their subjects
+    // Dynamically extract all hospital devices
     val hospitalDevices = remember {
         repository.allBooks.filter { it.type == "subject" }
             .groupBy { book ->
@@ -204,7 +205,7 @@ fun DirectoryScreen(
         Box(modifier = Modifier.weight(1f)) {
             when (selectedTab) {
                 0 -> {
-                    // Category: Curricula
+                    // Category: Curricula (المناهج الدراسية)
                     val filteredChapters = chapters.filter {
                         it.name.contains(searchQuery, ignoreCase = true)
                     }
@@ -261,7 +262,7 @@ fun DirectoryScreen(
                     }
                 }
                 1 -> {
-                    // Category: Course Guides
+                    // Category: Course Guides (أدلة المقررات)
                     val filteredGuides = courseGuides.filter {
                         it.title.contains(searchQuery, ignoreCase = true)
                     }
@@ -279,7 +280,15 @@ fun DirectoryScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .border(1.dp, Secondary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                                        .clickable { selectedBookDetail = book }
+                                        .clickable {
+                                            // ⭐ الانتقال إلى شاشة المحتويات الـ 12
+                                            val courseId = book.title
+                                                .replace(" ", "_")
+                                                .replace(":", "")
+                                                .replace("-", "_")
+                                                .trim()
+                                            onNavigateToCourseDetail(courseId)
+                                        }
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -306,9 +315,7 @@ fun DirectoryScreen(
                                                 maxLines = 2
                                             )
                                             Spacer(modifier = Modifier.height(4.dp))
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Box(
                                                     modifier = Modifier
                                                         .background(
@@ -326,14 +333,14 @@ fun DirectoryScreen(
                                                 }
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Text(
-                                                    text = if (book.type == "general") "دليل مادة مشتركة" else "كتاب مقرر أساسي",
+                                                    text = "12 قسماً تعليمياً",
                                                     fontSize = 11.sp,
                                                     color = TextSecondary
                                                 )
                                             }
                                         }
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text(text = "📖", fontSize = 20.sp)
+                                        Text(text = "👈", fontSize = 18.sp)
                                     }
                                 }
                             }
@@ -341,7 +348,7 @@ fun DirectoryScreen(
                     }
                 }
                 2 -> {
-                    // Category: Hospital Devices
+                    // Category: Hospital Devices (بلوكات أجهزة الجسم)
                     if (selectedDeviceDetail == null) {
                         val filteredDevices = hospitalDevices.keys.filter {
                             it.contains(searchQuery, ignoreCase = true)
@@ -365,9 +372,7 @@ fun DirectoryScreen(
                                             .clickable { selectedDeviceDetail = deviceName }
                                     ) {
                                         Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(14.dp),
+                                            modifier = Modifier.fillMaxWidth().padding(14.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Box(
@@ -377,49 +382,29 @@ fun DirectoryScreen(
                                                     .background(Color(0xFF1B314B)),
                                                 contentAlignment = Alignment.Center
                                             ) {
-                                                Text(
-                                                    text = getDeviceEmojiIcon(deviceName),
-                                                    fontSize = 26.sp
-                                                )
+                                                Text(text = getDeviceEmojiIcon(deviceName), fontSize = 26.sp)
                                             }
                                             Spacer(modifier = Modifier.width(14.dp))
                                             Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = deviceName,
-                                                    fontSize = 15.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = TextGold
-                                                )
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = "يحتوي على ${deviceBooks.size} مساقات سريرية وعملية متكاملة",
-                                                    fontSize = 11.sp,
-                                                    color = TextSecondary
-                                                )
+                                                Text(text = deviceName, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextGold)
+                                                Text(text = "يحتوي على ${deviceBooks.size} مساقات", fontSize = 11.sp, color = TextSecondary)
                                             }
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            Text(
-                                                text = "👈",
-                                                fontSize = 18.sp
-                                            )
+                                            Text(text = "👈", fontSize = 18.sp)
                                         }
                                     }
                                 }
                             }
                         }
                     } else {
-                        // Nested Detail: Inside selected Device
                         val deviceName = selectedDeviceDetail!!
                         val booksForDevice = hospitalDevices[deviceName]?.filter {
                             it.title.contains(searchQuery, ignoreCase = true)
                         } ?: emptyList()
 
                         Column(modifier = Modifier.fillMaxSize()) {
-                            // Back header for Nested Device Details
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Button(
@@ -429,77 +414,26 @@ fun DirectoryScreen(
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                                     modifier = Modifier.height(30.dp)
                                 ) {
-                                    Text("عودة لقائمة البلوكات ↩️", fontSize = 11.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+                                    Text("عودة للبلوكات ↩️", fontSize = 11.sp, color = Color.Black, fontWeight = FontWeight.Bold)
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = deviceName,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    modifier = Modifier.weight(1f)
-                                )
+                                Text(text = deviceName, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f))
                             }
 
                             if (booksForDevice.isEmpty()) {
-                                EmptyStateView("لا تتوفر مراجع لمصطلح البحث داخل هذا الجهاز.")
+                                EmptyStateView("لا تتوفر مراجع داخل هذا الجهاز.")
                             } else {
-                                LazyColumn(
-                                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
+                                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
                                     items(booksForDevice) { book ->
-                                        val typeLabel = when {
-                                            book.title.contains("(النظري)") -> "كتاب الشرح النظري 📄"
-                                            book.title.contains("(العملي)") -> "دليل التدريب العملي 🔬"
-                                            book.title.contains("(المرجع)") -> "المرجع السريري والطبي الكلي 🩺"
-                                            else -> "كتيب إرشادي 📘"
-                                        }
-
-                                        val typeColor = when {
-                                            book.title.contains("(النظري)") -> Color(0xFF3498DB)
-                                            book.title.contains("(العملي)") -> Color(0xFF2ECC71)
-                                            book.title.contains("(المرجع)") -> Color(0xFF9B59B6)
-                                            else -> Color(0xFFF1C40F)
-                                        }
-
                                         Card(
                                             colors = CardDefaults.cardColors(containerColor = Color(0x10FFFFFF)),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .border(1.dp, typeColor.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                            modifier = Modifier.fillMaxWidth().border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(10.dp))
                                                 .clickable { selectedBookDetail = book }
                                         ) {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(12.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        text = book.title.substringBefore(" - "),
-                                                        fontSize = 13.sp,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        color = Color.White
-                                                    )
-                                                    Spacer(modifier = Modifier.height(6.dp))
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .background(typeColor.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp))
-                                                            .border(1.dp, typeColor, shape = RoundedCornerShape(4.dp))
-                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                                    ) {
-                                                        Text(
-                                                            text = typeLabel,
-                                                            fontSize = 10.sp,
-                                                            color = Color.White,
-                                                            fontWeight = FontWeight.Bold
-                                                        )
-                                                    }
-                                                }
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(text = "👀", fontSize = 18.sp)
+                                            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                Text("📄", fontSize = 22.sp)
+                                                Spacer(modifier = Modifier.width(12.dp))
+                                                Text(text = book.title, fontSize = 13.sp, color = Color.White, modifier = Modifier.weight(1f))
                                             }
                                         }
                                     }
@@ -512,7 +446,7 @@ fun DirectoryScreen(
         }
     }
 
-    // Gorgeous Details Dialog
+    // Details Dialog for hospital devices/books when clicked in Tab 3 (بلوكات أجهزة الجسم)
     selectedBookDetail?.let { book ->
         AlertDialog(
             onDismissRequest = { selectedBookDetail = null },
@@ -568,20 +502,9 @@ fun DirectoryScreen(
                             }
                         }
                     ) {
-                        Text("قراءة الفورية 📖", color = Secondary, fontWeight = FontWeight.Bold)
+                        Text("القراءة الفورية 📖", color = Secondary, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(
-                        onClick = {
-                            val toOpen = selectedBookDetail
-                            if (toOpen != null) {
-                                repository.openBook(toOpen)
-                            }
-                            selectedBookDetail = null
-                        }
-                    ) {
-                        Text("تطبيق خارجي 📁", color = TextGold, fontWeight = FontWeight.Bold)
-                    }
                 }
             },
             dismissButton = {
@@ -597,37 +520,26 @@ fun DirectoryScreen(
 
 @Composable
 fun EmptyStateView(message: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("🔍", fontSize = 42.sp)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = message,
-                color = TextSecondary,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center
-            )
+            Text(text = message, color = TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
         }
     }
 }
 
-// Map device titles intelligently/visually to nice icons
 private fun getDeviceEmojiIcon(deviceName: String): String {
     return when {
-         deviceName.contains("الهيكل العضلي") || deviceName.contains("العضلات") -> "🦴"
-         deviceName.contains("القلبي") || deviceName.contains("الأوعية") || deviceName.contains("القلب") -> "🫀"
-         deviceName.contains("التنفسي") || deviceName.contains("التنفس") -> "🫁"
-         deviceName.contains("الهضمي") || deviceName.contains("الهضم") -> "🍕"
-         deviceName.contains("البولي") || deviceName.contains("التناسلي") -> "🧼"
-         deviceName.contains("الدموي") || deviceName.contains("اللمفاوي") || deviceName.contains("الدم") -> "🩸"
-         deviceName.contains("الصمائي") || deviceName.contains("الغدد") -> "🧬"
-         deviceName.contains("العصبي") && deviceName.contains("الدماغ") -> "🧠"
-         deviceName.contains("العصبي") -> "🧠"
-         deviceName.contains("عسكرية") -> "🛡️"
-         else -> "🏥"
+        deviceName.contains("الهيكل العضلي") || deviceName.contains("العضلات") -> "🦴"
+        deviceName.contains("القلبي") || deviceName.contains("الأوعية") || deviceName.contains("القلب") -> "🫀"
+        deviceName.contains("التنفسي") || deviceName.contains("التنفس") -> "🫁"
+        deviceName.contains("الهضمي") || deviceName.contains("الهضم") -> "🍕"
+        deviceName.contains("البولي") || deviceName.contains("التناسلي") -> "🧼"
+        deviceName.contains("الدموي") || deviceName.contains("اللمفاوي") || deviceName.contains("الدم") -> "🩸"
+        deviceName.contains("الصمائي") || deviceName.contains("الغدد") -> "🧬"
+        deviceName.contains("العصبي") -> "🧠"
+        deviceName.contains("عسكرية") -> "🛡️"
+        else -> "🏥"
     }
 }
-// @builder:end

@@ -1,0 +1,108 @@
+[
+  {
+    "id": "ANA101",
+    "nameAr": "علم التشريح العام",
+    "nameEn": "General Anatomy",
+    "creditHoursN": 2,
+    "creditHoursP": 2,
+    "creditHoursC": 0,
+    "totalCreditHours": 3.0,
+    "actualHoursN": 32,
+    "actualHoursP": 64,
+    "actualHoursC": 0,
+    "totalActualHours": 96,
+    "contents": [
+      {
+        "titleAr": "المحاضرات النظرية",
+        "titleEn": "Theoretical Lectures",
+        "descriptionAr": "محاضرات نظرية شاملة في علم التشريح",
+        "type": "TEXT",
+        "resourceUrl": "ana101_theory.pdf"
+      },
+      {
+        "titleAr": "المحاضرات العملية",
+        "titleEn": "Practical Sessions",
+        "descriptionAr": "تدريبات عملية على الجثث والنماذج",
+        "type": "TEXT",
+        "resourceUrl": "ana101_practical.pdf"
+      },
+      {
+        "titleAr": "الدليل المرئي المصور",
+        "titleEn": "Visual Atlas",
+        "descriptionAr": "أطلس تشريحي ملون بالأعضاء",
+        "type": "PDF",
+        "resourceUrl": "ana101_atlas.pdf"
+      },
+      {
+        "titleAr": "دليل الطالب للمقرر",
+        "titleEn": "Student Guide",
+        "descriptionAr": "دليل الطالب الشامل للمقرر",
+        "type": "PDF",
+        "resourceUrl": "ana101_student_guide.pdf"
+      },
+      {
+        "titleAr": "دليل المدرب للمقرر",
+        "titleEn": "Instructor Guide",
+        "descriptionAr": "دليل المدرب مع خطط الدروس",
+        "type": "PDF",
+        "resourceUrl": "ana101_instructor_guide.pdf"
+      },
+      {
+        "titleAr": "المراجع الرئيسية للمقرر",
+        "titleEn": "Main References",
+        "descriptionAr": "قائمة المراجع والكتب المعتمدة",
+        "type": "TEXT",
+        "resourceUrl": ""
+      },
+      {
+        "titleAr": "الفيديوهات الخاصة بالمقرر",
+        "titleEn": "Course Videos",
+        "descriptionAr": "مجموعة فيديوهات تعليمية للتشريح",
+        "type": "VIDEO",
+        "resourceUrl": "ana101_videos/"
+      },
+      {
+        "titleAr": "الأنشطة الخاصة بالمقرر",
+        "titleEn": "Course Activities",
+        "descriptionAr": "أنشطة تفاعلية وتمارين عملية",
+        "type": "INTERACTIVE",
+        "resourceUrl": "ana101_activities/"
+      },
+      {
+        "titleAr": "بنك الأسئلة للمقرر",
+        "titleEn": "Question Bank",
+        "descriptionAr": "بنك أسئلة MCQ و OSCE",
+        "type": "INTERACTIVE",
+        "resourceUrl": "ana101_qbank.json"
+      },
+      {
+        "titleAr": "العروض التقديمية للمقرر",
+        "titleEn": "Presentations",
+        "descriptionAr": "عروض PowerPoint للمحاضرات",
+        "type": "PRESENTATION",
+        "resourceUrl": "ana101_slides/"
+      },
+      {
+        "titleAr": "المحاكاة والواقع الافتراضي",
+        "titleEn": "VR Simulation",
+        "descriptionAr": "محاكاة ثلاثية الأبعاد للتشريح",
+        "type": "VR_SIMULATION",
+        "resourceUrl": "ana101_vr.apk"
+      },
+      {
+        "titleAr": "دليل المهارات والتدريب السريري",
+        "titleEn": "Clinical Skills Guide",
+        "descriptionAr": "دليل المهارات السريرية الأساسية",
+        "type": "PDF",
+        "resourceUrl": "ana101_clinical_skills.pdf"
+      },
+      {
+        "titleAr": "نافذة الملاحظات عن المقرر",
+        "titleEn": "Course Notes",
+        "descriptionAr": "ملاحظات وتعديلات المناهج",
+        "type": "TEXT",
+        "resourceUrl": ""
+      }
+    ]
+  }
+]

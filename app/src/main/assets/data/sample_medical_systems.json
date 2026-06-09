@@ -1,0 +1,31 @@
+[
+  {
+    "id": "musculoskeletal",
+    "nameAr": "الجهاز الهيكلي العضلي",
+    "nameEn": "Musculoskeletal System",
+    "descriptionAr": "يشمل العظام، المفاصل، العضلات والأنسجة الرابطة",
+    "subsystems": [
+      { "nameAr": "علم التشريح الخاص بالجهاز", "type": "ANATOMY" },
+      { "nameAr": "علم الأنسجة الخاص بالجهاز", "type": "HISTOLOGY" },
+      { "nameAr": "علم وظائف الأعضاء الخاص بالجهاز", "type": "PHYSIOLOGY" },
+      { "nameAr": "علم الأحياء الدقيقة الخاص بالجهاز", "type": "MICROBIOLOGY" },
+      { "nameAr": "الكيمياء الحيوية الخاص بالجهاز", "type": "BIOCHEMISTRY" },
+      { "nameAr": "علم الأمراض الخاص بالجهاز", "type": "PATHOLOGY" },
+      { "nameAr": "علم الأدوية الخاص بالجهاز", "type": "PHARMACOLOGY" },
+      { "nameAr": "العلوم المخبرية الخاص بالجهاز", "type": "LABORATORY" },
+      { "nameAr": "علم الأشعة الخاص بالجهاز", "type": "RADIOLOGY" },
+      { "nameAr": "الفحص والتقييم السريري الخاص بالجهاز", "type": "CLINICAL_EXAM" },
+      { "nameAr": "الباطنية الخاص بالجهاز", "type": "INTERNAL_MEDICINE" },
+      { "nameAr": "التخدير أثناء الحروب الخاص بالجهاز", "type": "WAR_ANESTHESIA" },
+      { "nameAr": "الجراحة العامة الخاصة بالجهاز", "type": "GENERAL_SURGERY" },
+      { "nameAr": "جراحة الحروب الخاص بالجهاز", "type": "WAR_SURGERY" },
+      { "nameAr": "طب الطوارئ الخاص بالجهاز", "type": "EMERGENCY" },
+      { "nameAr": "رعاية الحالات الحرجة الخاص بالجهاز", "type": "ICU" },
+      { "nameAr": "الطب الوقائي الخاص بالجهاز", "type": "PREVENTIVE" },
+      { "nameAr": "المصطلحات الطبية الخاص بالجهاز", "type": "TERMINOLOGY" },
+      { "nameAr": "مهارات الاتصال والتواصل الخاص بالجهاز", "type": "COMMUNICATION" },
+      { "nameAr": "أسس البحث العلمي الخاص بالجهاز", "type": "RESEARCH" },
+      { "nameAr": "طب الأطفال الخاص بالجهاز", "type": "PEDIATRICS" }
+    ]
+  }
+]
