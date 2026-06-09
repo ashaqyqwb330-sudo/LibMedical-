@@ -197,6 +197,22 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onNavigateToCourseDetail = { courseId ->
                     navController.navigate("course/${Uri.encode(courseId)}")
+                },
+                onNavigateToCourseDescriptions = {
+                    navController.navigate("course_descriptions")
+                }
+            )
+        }
+        composable("course_descriptions") {
+            CourseDescriptionScreen(
+                onBack = { navController.popBackStack() },
+                onCourseClick = { courseDesc ->
+                    val courseId = courseDesc.nameAr
+                        .replace(" ", "_")
+                        .replace(":", "")
+                        .replace("-", "_")
+                        .trim()
+                    navController.navigate("course/${Uri.encode(courseId)}")
                 }
             )
         }

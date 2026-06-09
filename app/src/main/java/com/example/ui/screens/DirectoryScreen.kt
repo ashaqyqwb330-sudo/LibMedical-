@@ -46,7 +46,8 @@ fun DirectoryScreen(
     onNavigateToPdf: (BookEntry) -> Unit,
     onNavigateToChapter: (String, String) -> Unit,
     onNavigateToBooks: (String) -> Unit,
-    onNavigateToCourseDetail: (String) -> Unit = {}
+    onNavigateToCourseDetail: (String) -> Unit = {},
+    onNavigateToCourseDescriptions: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
@@ -144,10 +145,17 @@ fun DirectoryScreen(
             },
             modifier = Modifier.padding(bottom = 16.dp)
         ) {
-            listOf("🎓 المناهج الدراسية", "📖 أدلة المقررات", "🫁 بلوكات أجهزة الجسم")
+            listOf("🎓 المناهج الدراسية", "📖 أدلة المقررات", "🫁 بلوكات أجهزة الجسم", "📝 توصيفات المقررات")
                 .forEachIndexed { index, title ->
                     Tab(selected = selectedTab == index,
-                        onClick = { selectedTab = index; selectedDeviceDetail = null },
+                        onClick = {
+                            if (index == 3) {
+                                onNavigateToCourseDescriptions()
+                            } else {
+                                selectedTab = index
+                                selectedDeviceDetail = null
+                            }
+                        },
                         text = {
                             Text(text = title, fontSize = 13.sp,
                                 fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
