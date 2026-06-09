@@ -33,7 +33,7 @@ fun CourseDetailScreen(
     onBack: () -> Unit,
     onContentClick: (Int) -> Unit = {}
 ) {
-    val course = remember {
+    val course = remember(courseId) {
         var found = StudyPlanProvider.getStages()
             .flatMap { it.semesters }
             .flatMap { it.courses }

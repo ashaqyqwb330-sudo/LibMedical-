@@ -1,4 +1,3 @@
-// @builder:file app/src/main/java/com/example/ui/screens/CourseContentDetailScreen.kt
 package com.example.ui.screens
 
 import android.widget.Toast
@@ -6,12 +5,11 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,7 +22,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.StudyPlanProvider
@@ -43,8 +40,7 @@ fun CourseContentDetailScreen(
 ) {
     val context = LocalContext.current
 
-    // البحث عن المقرر والمحتوى
-    val course = remember {
+    val course = remember(courseId) {
         var found = StudyPlanProvider.getStages()
             .flatMap { it.semesters }
             .flatMap { it.courses }
@@ -86,34 +82,32 @@ fun CourseContentDetailScreen(
 
     if (course == null || content == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("المحتوى غير موجود", style = MaterialTheme.typography.bodyLarge)
+            Text("المحتوى غير موجود", style = MaterialTheme.typography.bodyLarge, color = TextSecondary)
         }
         return
     }
+
+    val typeColor = getContentTypeColor(content.type)
+    val typeIcon = getContentIcon(content.type)
+    val typeLabel = getContentTypeLabel(content.type)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text(
-                            text = content.titleAr,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextGold
-                        )
-                        Text(
-                            text = course.nameAr,
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
+                        Text(text = content.titleAr, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextGold)
+                        Text(text = course.nameAr, fontSize = 12.sp, color = TextSecondary)
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "رجوع")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع", tint = TextGold)
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF0F1F33)
+                )
             )
         }
     ) { padding ->
@@ -124,42 +118,39 @@ fun CourseContentDetailScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // أيقونة ونوع المحتوى
+            // بطاقة رأسية مميزة
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0x15FFFFFF)),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
+                    modifier = Modifier.fillMaxWidth().padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    val icon = getContentIcon(content.type)
-                    val typeLabel = getContentTypeLabel(content.type)
-                    val typeColor = getContentTypeColor(content.type)
-
+                    // دائرة الأيقونة
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(typeColor.copy(alpha = 0.2f)),
+                            .size(90.dp)
+                            .clip(RoundedCornerShape(25.dp))
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(typeColor.copy(alpha = 0.3f), typeColor.copy(alpha = 0.05f))
+                                )
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            icon,
+                            typeIcon,
                             contentDescription = null,
-                            modifier = Modifier.size(40.dp),
+                            modifier = Modifier.size(48.dp),
                             tint = typeColor
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = typeLabel,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = typeColor
                     )
@@ -168,73 +159,66 @@ fun CourseContentDetailScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.padding(top = 8.dp),
+                        lineHeight = 22.sp
+                    )
+                    // شريط تقدم زخرفي
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(typeColor.copy(alpha = 0.6f))
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // قائمة المحتويات التفصيلية حسب النوع
+            // المحتوى حسب النوع
             when (content.type) {
-                ContentType.TEXT -> TextContentSection()
-                ContentType.VIDEO -> VideoContentSection()
-                ContentType.PDF -> PdfContentSection(courseId, contentIndex)
-                ContentType.PRESENTATION -> PresentationContentSection()
-                ContentType.INTERACTIVE -> InteractiveContentSection()
-                ContentType.VR_SIMULATION -> VrSimulationSection()
+                ContentType.TEXT -> TextContentSection(typeColor)
+                ContentType.VIDEO -> VideoContentSection(typeColor)
+                ContentType.PDF -> PdfContentSection(typeColor)
+                ContentType.PRESENTATION -> PresentationContentSection(typeColor)
+                ContentType.INTERACTIVE -> InteractiveContentSection(typeColor)
+                ContentType.VR_SIMULATION -> VrSimulationSection(typeColor)
             }
         }
     }
 }
 
-// ========== أقسام المحتوى حسب النوع ==========
+// ========== أقسام المحتوى المحسّنة ==========
 
 @Composable
-private fun TextContentSection() {
+private fun TextContentSection(accentColor: Color) {
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            "المحتوى النظري",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = TextGold
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        SectionHeader("المحتوى النظري", "📄", accentColor)
 
-        // قائمة مواضيع نظرية وهمية (يمكن جلبها من DataProvider)
         val topics = listOf(
-            "مقدمة وتعريفات أساسية",
-            "التصنيفات والتقسيمات الرئيسية",
-            "آليات العمل والاستجابة",
-            "الحالات الشائعة والتشخيص",
-            "البروتوكولات العلاجية المعتمدة",
-            "خلاصة ومراجعة شاملة"
+            "مقدمة وتعريفات أساسية" to "تمهيد شامل للموضوع مع شرح المفاهيم الأساسية",
+            "التصنيفات والتقسيمات الرئيسية" to "عرض منهجي للتصنيفات المعتمدة",
+            "آليات العمل والاستجابة" to "شرح تفصيلي للآليات الفسيولوجية",
+            "الحالات الشائعة والتشخيص" to "مراجعة الحالات السريرية الأكثر شيوعاً",
+            "البروتوكولات العلاجية المعتمدة" to "خطوات العلاج وفق الأدلة الطبية",
+            "خلاصة ومراجعة شاملة" to "ملخص لأهم النقاط والمفاهيم"
         )
-        topics.forEachIndexed { index, topic ->
-            GlassCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+        topics.forEachIndexed { index, (title, desc) ->
+            GlassCard(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Secondary.copy(alpha = 0.15f)),
+                        modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
+                            .background(accentColor.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("${index + 1}", color = Secondary, fontWeight = FontWeight.Bold)
+                        Text("${index + 1}", color = accentColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = topic,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White
-                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column {
+                        Text(text = title, style = MaterialTheme.typography.bodyLarge, color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Text(text = desc, fontSize = 12.sp, color = TextSecondary)
+                    }
                 }
             }
         }
@@ -242,47 +226,36 @@ private fun TextContentSection() {
 }
 
 @Composable
-private fun VideoContentSection() {
+private fun VideoContentSection(accentColor: Color) {
     val context = LocalContext.current
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            "الفيديوهات التعليمية",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = TextGold
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        SectionHeader("الفيديوهات التعليمية", "🎥", accentColor)
 
         val videos = listOf(
-            "المحاضرة التمهيدية (30 دقيقة)" to "مقدمة شاملة للمادة",
-            "شرح الحالات السريرية (45 دقيقة)" to "تحليل عملي للحالات الشائعة",
-            "ورشة تطبيقية (20 دقيقة)" to "تطبيق عملي للخطوات الأساسية",
-            "مراجعة شاملة (15 دقيقة)" to "ملخص سريع قبل الاختبار"
+            "المحاضرة التمهيدية" to "30 دقيقة – مقدمة شاملة للمادة",
+            "شرح الحالات السريرية" to "45 دقيقة – تحليل عملي للحالات الشائعة",
+            "ورشة تطبيقية" to "20 دقيقة – تطبيق عملي للخطوات الأساسية",
+            "مراجعة شاملة" to "15 دقيقة – ملخص سريع قبل الاختبار"
         )
         videos.forEach { (title, desc) ->
             GlassCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .clickable {
-                        Toast.makeText(context, "سيتم فتح الفيديو قريباً", Toast.LENGTH_SHORT).show()
-                    }
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    .clickable { Toast.makeText(context, "سيتم فتح الفيديو قريباً", Toast.LENGTH_SHORT).show() }
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.Red,
-                        modifier = Modifier.size(36.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
+                            .background(accentColor.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = accentColor, modifier = Modifier.size(26.dp))
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(title, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        Text(title, fontWeight = FontWeight.SemiBold, color = Color.White, fontSize = 15.sp)
                         Text(desc, fontSize = 12.sp, color = TextSecondary)
                     }
+                    Text("◀", color = TextSecondary, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -290,46 +263,35 @@ private fun VideoContentSection() {
 }
 
 @Composable
-private fun PdfContentSection(courseId: String, contentIndex: Int) {
+private fun PdfContentSection(accentColor: Color) {
     val context = LocalContext.current
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            "المستندات والملفات",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = TextGold
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        SectionHeader("المستندات والملفات", "📑", accentColor)
 
         val docs = listOf(
-            "الدليل الكامل للمقرر" to "PDF - 45 صفحة",
-            "ملخص النقاط الرئيسية" to "PDF - 12 صفحة",
-            "جداول وخرائط ذهنية" to "PDF - 8 صفحات"
+            "الدليل الكامل للمقرر" to "PDF – 45 صفحة – مرجع شامل",
+            "ملخص النقاط الرئيسية" to "PDF – 12 صفحة – للمراجعة السريعة",
+            "جداول وخرائط ذهنية" to "PDF – 8 صفحات – تنظيم بصري"
         )
         docs.forEach { (title, desc) ->
             GlassCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .clickable {
-                        Toast.makeText(context, "سيتم فتح المستند قريباً", Toast.LENGTH_SHORT).show()
-                    }
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    .clickable { Toast.makeText(context, "سيتم فتح المستند قريباً", Toast.LENGTH_SHORT).show() }
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Info,
-                        contentDescription = null,
-                        tint = Color(0xFFE74C3C),
-                        modifier = Modifier.size(36.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
+                            .background(accentColor.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Info, contentDescription = null, tint = accentColor, modifier = Modifier.size(26.dp))
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(title, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        Text(title, fontWeight = FontWeight.SemiBold, color = Color.White, fontSize = 15.sp)
                         Text(desc, fontSize = 12.sp, color = TextSecondary)
                     }
+                    Icon(Icons.Filled.Share, contentDescription = null, tint = TextSecondary)
                 }
             }
         }
@@ -337,46 +299,35 @@ private fun PdfContentSection(courseId: String, contentIndex: Int) {
 }
 
 @Composable
-private fun PresentationContentSection() {
+private fun PresentationContentSection(accentColor: Color) {
     val context = LocalContext.current
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            "العروض التقديمية",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = TextGold
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        SectionHeader("العروض التقديمية", "📊", accentColor)
 
         val presentations = listOf(
-            "المحاضرة 1: المقدمة والتعريفات" to "24 شريحة",
-            "المحاضرة 2: التشخيص والفحص" to "32 شريحة",
-            "المحاضرة 3: العلاج والتدخل" to "28 شريحة"
+            "المحاضرة 1: المقدمة والتعريفات" to "24 شريحة – أساسيات المادة",
+            "المحاضرة 2: التشخيص والفحص" to "32 شريحة – الجانب السريري",
+            "المحاضرة 3: العلاج والتدخل" to "28 شريحة – البروتوكولات العلاجية"
         )
         presentations.forEach { (title, desc) ->
             GlassCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .clickable {
-                        Toast.makeText(context, "سيتم فتح العرض التقديمي قريباً", Toast.LENGTH_SHORT).show()
-                    }
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    .clickable { Toast.makeText(context, "سيتم فتح العرض التقديمي قريباً", Toast.LENGTH_SHORT).show() }
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Share,
-                        contentDescription = null,
-                        tint = Color(0xFF3498DB),
-                        modifier = Modifier.size(36.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
+                            .background(accentColor.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.List, contentDescription = null, tint = accentColor, modifier = Modifier.size(26.dp))
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(title, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        Text(title, fontWeight = FontWeight.SemiBold, color = Color.White, fontSize = 15.sp)
                         Text(desc, fontSize = 12.sp, color = TextSecondary)
                     }
+                    Text("◀", color = TextSecondary, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -384,124 +335,131 @@ private fun PresentationContentSection() {
 }
 
 @Composable
-private fun InteractiveContentSection() {
+private fun InteractiveContentSection(accentColor: Color) {
     val context = LocalContext.current
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            "الأنشطة التفاعلية وبنك الأسئلة",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = TextGold
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        SectionHeader("الأنشطة التفاعلية وبنك الأسئلة", "🎮", accentColor)
 
-        // قسم بنك الأسئلة
+        // بطاقة بنك الأسئلة
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0x15FFFFFF)),
             shape = RoundedCornerShape(12.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("بنك الأسئلة (MCQ)", fontWeight = FontWeight.Bold, color = TextOrange)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Info, contentDescription = null, tint = accentColor, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("بنك الأسئلة (MCQ)", fontWeight = FontWeight.Bold, color = accentColor, fontSize = 16.sp)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("س1: ما هو التعريف الصحيح لهذا المصطلح؟", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "س1: ما هو التعريف الصحيح لهذا المصطلح؟",
-                    color = Color.White,
-                    fontSize = 14.sp
-                )
-                Spacer(modifier = Modifier.height(6.dp))
                 listOf(
-                    "أ. الإجابة الأولى (غير صحيحة)",
-                    "ب. الإجابة الثانية (صحيحة) ✓",
-                    "ج. الإجابة الثالثة (غير صحيحة)",
-                    "د. الإجابة الرابعة (غير صحيحة)"
-                ).forEach { answer ->
+                    "أ. الإجابة الأولى" to false,
+                    "ب. الإجابة الثانية (صحيحة) ✓" to true,
+                    "ج. الإجابة الثالثة" to false,
+                    "د. الإجابة الرابعة" to false
+                ).forEach { (answer, isCorrect) ->
                     Text(
                         text = answer,
-                        color = if (answer.contains("✓")) Color.Green else TextSecondary,
+                        color = if (isCorrect) Color(0xFF4CAF50) else TextSecondary,
                         fontSize = 13.sp,
-                        modifier = Modifier.padding(vertical = 2.dp)
+                        modifier = Modifier.padding(vertical = 3.dp),
+                        fontWeight = if (isCorrect) FontWeight.Bold else FontWeight.Normal
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         GoldButton(
-            text = "فتح التمرين التفاعلي",
-            onClick = {
-                Toast.makeText(context, "سيتم فتح التمرين التفاعلي قريباً", Toast.LENGTH_SHORT).show()
-            },
-            modifier = Modifier.fillMaxWidth()
+            onClick = { Toast.makeText(context, "سيتم فتح التمرين التفاعلي قريباً", Toast.LENGTH_SHORT).show() },
+            modifier = Modifier.fillMaxWidth(),
+            text = "فتح التمرين التفاعلي"
         )
     }
 }
 
 @Composable
-private fun VrSimulationSection() {
+private fun VrSimulationSection(accentColor: Color) {
     val context = LocalContext.current
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            "المحاكاة والواقع الافتراضي",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = TextGold
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        SectionHeader("المحاكاة والواقع الافتراضي", "🥽", accentColor)
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color(0x15FFFFFF)),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    Icons.Filled.Build,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = TextOrange
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+            Column(modifier = Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier.size(100.dp).clip(RoundedCornerShape(25.dp))
+                        .background(
+                            Brush.radialGradient(
+                                listOf(accentColor.copy(alpha = 0.3f), accentColor.copy(alpha = 0.05f))
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(56.dp),
+                        tint = accentColor
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     "محاكاة طبية تفاعلية",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     color = TextGold
                 )
                 Text(
                     "تجربة محاكاة غامرة للتدريب على الإجراءات الطبية في بيئة آمنة وواقعية.",
                     color = TextSecondary,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 8.dp),
+                    lineHeight = 22.sp
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 GoldButton(
-                    text = "بدء المحاكاة",
-                    onClick = {
-                        Toast.makeText(context, "سيتم تشغيل المحاكاة قريباً", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = { Toast.makeText(context, "سيتم تشغيل المحاكاة قريباً", Toast.LENGTH_SHORT).show() },
+                    modifier = Modifier.fillMaxWidth(),
+                    text = "بدء المحاكاة"
                 )
             }
         }
     }
 }
 
-// ========== دوال مساعدة ==========
+// ========== مكونات مساعدة ==========
+
+@Composable
+private fun SectionHeader(title: String, emoji: String, accentColor: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
+        Text(emoji, fontSize = 24.sp)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = TextGold
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Box(modifier = Modifier.width(30.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(accentColor))
+    }
+}
 
 fun getContentIcon(type: ContentType): ImageVector = when (type) {
     ContentType.TEXT -> Icons.Filled.List
     ContentType.VIDEO -> Icons.Filled.PlayArrow
     ContentType.PDF -> Icons.Filled.Info
-    ContentType.PRESENTATION -> Icons.Filled.Share
+    ContentType.PRESENTATION -> Icons.Filled.List
     ContentType.INTERACTIVE -> Icons.Filled.Create
-    ContentType.VR_SIMULATION -> Icons.Filled.Build
+    ContentType.VR_SIMULATION -> Icons.Filled.PlayArrow
 }
 
 fun getContentTypeLabel(type: ContentType): String = when (type) {
@@ -521,4 +479,3 @@ fun getContentTypeColor(type: ContentType): Color = when (type) {
     ContentType.INTERACTIVE -> Color(0xFFFF9800)
     ContentType.VR_SIMULATION -> Color(0xFF9C27B0)
 }
-// @builder:end
