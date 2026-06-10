@@ -31,6 +31,11 @@ import com.example.ui.components.GlassCard
 import com.example.ui.components.Shelf
 import com.example.ui.components.staggeredEntrance
 import com.example.ui.theme.*
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import android.webkit.WebView
+import android.webkit.WebViewClient
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +55,7 @@ fun CourseDescriptionScreen(
     val currentCourses = currentSemester?.courses ?: emptyList()
 
     var selectedCourseForDetail by remember { mutableStateOf<CourseDescription?>(null) }
+    var fullscreenCourseHtml by remember { mutableStateOf<CourseDescription?>(null) }
 
     Scaffold(
         topBar = {
@@ -295,6 +301,27 @@ fun CourseDescriptionScreen(
                             textAlign = TextAlign.Right,
                             modifier = Modifier.fillMaxWidth()
                         )
+                        if (!course.descriptionHtml.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    fullscreenCourseHtml = course
+                                    selectedCourseForDetail = null
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Secondary,
+                                    contentColor = Color(0xFF060E1F)
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "📄 تصفح التوصيف الأكاديمي التفصيلي (PDF)",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
                 }
             },
@@ -303,4 +330,187 @@ fun CourseDescriptionScreen(
             modifier = Modifier.padding(16.dp)
         )
     }
+
+    // Fullscreen Dialog for detailed HTML/PDF presentation
+    if (fullscreenCourseHtml != null) {
+        val course = fullscreenCourseHtml!!
+        Dialog(
+            onDismissRequest = { fullscreenCourseHtml = null },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false
+            )
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color(0xFF060E1F)
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    TopAppBar(
+                        title = {
+                            Column {
+                                Text(
+                                    text = course.nameAr,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextGold
+                                )
+                                Text(
+                                    text = "تطوير وضمان الجودة - وثيقة مواصفات المقرر الرسمية",
+                                    fontSize = 11.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { fullscreenCourseHtml = null }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع", tint = TextGold)
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color(0xFF0F1F33)
+                        )
+                    )
+                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF060E1F))) {
+                        HtmlSyllabusViewer(
+                            htmlContent = course.descriptionHtml ?: "",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HtmlSyllabusViewer(
+    htmlContent: String,
+    modifier: Modifier = Modifier
+) {
+    val styledHtml = remember(htmlContent) {
+        val css = """
+            <style>
+              body {
+                background-color: #060E1F;
+                color: #F5EFE0;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                direction: rtl;
+                text-align: right;
+                padding: 16px;
+                margin: 0;
+                line-height: 1.6;
+              }
+              h1, h2, h3, h4, .main-title, .section-title, .syllabus-title {
+                color: #D4AF37 !important;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+              }
+              .section-title {
+                border-bottom: 2px solid #D4AF37;
+                padding-bottom: 6px;
+                margin-top: 28px;
+                margin-bottom: 14px;
+                font-size: 16px;
+                font-weight: bold;
+              }
+              table {
+                border-collapse: collapse;
+                width: 100% !important;
+                margin: 18px 0;
+                background-color: #0C1A2C;
+                color: #F5EFE0;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                border-radius: 8px;
+                overflow: hidden;
+              }
+              th {
+                background-color: #0F1F33 !important;
+                color: #D4AF37 !important;
+                font-weight: bold;
+                border: 1px solid #1A2F4C !important;
+                padding: 12px 10px;
+                font-size: 13px;
+              }
+              td {
+                border: 1px solid #1A2F4C !important;
+                padding: 10px 8px;
+                font-size: 12px;
+                text-align: right;
+                color: #D0C8B0;
+              }
+              tr:nth-child(even) {
+                background-color: #0E223B;
+              }
+              .filled-data, .filled-data-center {
+                color: #F5EFE0 !important;
+              }
+              .signature-table {
+                margin-top: 24px;
+                width: 100%;
+              }
+              .signature-table td {
+                border: none !important;
+                text-align: center;
+              }
+              .signature-line {
+                border-bottom: 1px dashed #D4AF37;
+                height: 14px;
+                margin-bottom: 8px;
+                width: 80%;
+                margin-left: auto;
+                margin-right: auto;
+              }
+              .page {
+                background-color: #0B1A2C;
+                border: 1px solid #1A2F4C;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 24px;
+                box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+              }
+              .syllabus-title {
+                font-size: 18px;
+                font-weight: bold;
+                text-align: center;
+                margin-top: 20px;
+                margin-bottom: 20px;
+              }
+              /* Scrollbar styling */
+              ::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+              }
+              ::-webkit-scrollbar-track {
+                background: #060E1F;
+              }
+              ::-webkit-scrollbar-thumb {
+                background: #D4AF37;
+                border-radius: 4px;
+              }
+            </style>
+        """.trimIndent()
+        
+        "<html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">$css</head><body>$htmlContent</body></html>"
+    }
+
+    AndroidView(
+        factory = { context ->
+            WebView(context).apply {
+                webViewClient = WebViewClient()
+                settings.apply {
+                    javaScriptEnabled = true
+                    loadWithOverviewMode = true
+                    useWideViewPort = true
+                    supportZoom()
+                    builtInZoomControls = true
+                    displayZoomControls = false
+                    textZoom = 100
+                }
+                setBackgroundColor(0x060E1F)
+            }
+        },
+        update = { webView ->
+            webView.loadDataWithBaseURL(null, styledHtml, "text/html", "UTF-8", null)
+        },
+        modifier = modifier
+    )
 }

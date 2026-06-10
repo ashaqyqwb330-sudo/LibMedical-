@@ -17,5 +17,6 @@ data class Semester(
 data class CourseDescription(
     val id: String,
     val nameAr: String,
-    val description: String = ""
+    val description: String = "",
+    val descriptionHtml: String? = null
 )

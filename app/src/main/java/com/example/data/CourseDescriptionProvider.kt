@@ -8,8 +8,14 @@ import java.io.IOException
 object CourseDescriptionProvider {
     fun load(context: Context): CourseDescriptionJson? {
         return try {
-            val json = context.assets.open("data/course_descriptions.json")
-                .bufferedReader().use { it.readText() }
+            // Try Loading the detailed, high-fidelity JSON first.
+            val json = try {
+                context.assets.open("data/course_descriptions_right.json")
+                    .bufferedReader().use { it.readText() }
+            } catch (e: Exception) {
+                context.assets.open("data/course_descriptions.json")
+                    .bufferedReader().use { it.readText() }
+            }
             Gson().fromJson(json, CourseDescriptionJson::class.java)
         } catch (e: Exception) {
             e.printStackTrace()
