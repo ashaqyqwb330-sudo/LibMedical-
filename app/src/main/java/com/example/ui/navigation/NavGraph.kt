@@ -206,14 +206,20 @@ fun NavGraph(navController: NavHostController) {
         composable("course_descriptions") {
             CourseDescriptionScreen(
                 onBack = { navController.popBackStack() },
-                onCourseClick = { courseDesc ->
-                    val courseId = courseDesc.nameAr
-                        .replace(" ", "_")
-                        .replace(":", "")
-                        .replace("-", "_")
-                        .trim()
-                    navController.navigate("course/${Uri.encode(courseId)}")
+                onCourseClick = { course ->
+                    // الانتقال إلى شاشة التوصيف الكامل مع تمرير المعرف الأصلي
+                    navController.navigate("course_specification/${Uri.encode(course.id)}")
                 }
+            )
+        }
+        composable(
+            "course_specification/{courseId}",
+            arguments = listOf(navArgument("courseId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val courseId = backStackEntry.arguments?.getString("courseId") ?: ""
+            CourseSpecificationScreen(
+                courseId = courseId,
+                onBack = { navController.popBackStack() }
             )
         }
         composable("reports") {

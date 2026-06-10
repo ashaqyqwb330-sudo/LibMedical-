@@ -8,18 +8,21 @@ import java.io.IOException
 object CourseDescriptionProvider {
     fun load(context: Context): CourseDescriptionJson? {
         return try {
-            // Try Loading the detailed, high-fidelity JSON first.
-            val json = try {
-                context.assets.open("data/course_descriptions_right.json")
-                    .bufferedReader().use { it.readText() }
-            } catch (e: Exception) {
-                context.assets.open("data/course_descriptions.json")
-                    .bufferedReader().use { it.readText() }
-            }
+            // تحميل الملف الصحيح مباشرة
+            val json = context.assets.open("data/course_descriptions_right.json")
+                .bufferedReader().use { it.readText() }
             Gson().fromJson(json, CourseDescriptionJson::class.java)
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             e.printStackTrace()
-            null
+            // في حالة فشل تحميل الملف الصحيح، نحاول تحميل الملف العادي
+            try {
+                val json = context.assets.open("data/course_descriptions.json")
+                    .bufferedReader().use { it.readText() }
+                Gson().fromJson(json, CourseDescriptionJson::class.java)
+            } catch (e2: IOException) {
+                e2.printStackTrace()
+                null
+            }
         }
     }
 }

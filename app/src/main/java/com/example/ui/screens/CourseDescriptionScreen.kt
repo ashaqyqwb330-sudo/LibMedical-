@@ -207,7 +207,7 @@ fun CourseDescriptionScreen(
                                         bookTitle = course.nameAr,
                                         coverPath = null,
                                         activeBaseDir = null,
-                                        onClick = { selectedCourseForDetail = course }
+                                        onClick = { onCourseClick(course) }
                                     )
                                 }
                             }
