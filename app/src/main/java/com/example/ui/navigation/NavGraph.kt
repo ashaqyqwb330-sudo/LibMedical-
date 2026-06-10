@@ -110,8 +110,8 @@ fun NavGraph(navController: NavHostController) {
                 chapterId = chapterId,
                 deviceName = deviceName,
                 onBack = { navController.popBackStack() },
-                onSubjectClick = { index, title ->
-                    navController.navigate("subject/$chapterId/${Uri.encode(deviceName)}/${Uri.encode(title)}/$index/false")
+                onCourseClick = { courseId ->
+                    navController.navigate("course/${Uri.encode(courseId)}")
                 }
             )
         }

@@ -6,9 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -27,16 +26,17 @@ fun DeviceScreen(
     chapterId: String,
     deviceName: String,
     onBack: () -> Unit,
-    onSubjectClick: (subjectIndex: Int, subjectTitle: String) -> Unit
+    onCourseClick: (String) -> Unit  // دالة جديدة للانتقال إلى CourseDetailScreen
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
     val subjects = remember { repository.getDeviceSubjects(chapterId, deviceName) }
 
-    // محاولة إيجاد وصف الجهاز من StudyPlanProvider (اختياري)
     val systemInfo = remember(deviceName) {
         StudyPlanProvider.getMedicalSystems().firstOrNull { it.nameAr == deviceName }
     }
+
+    var selectedSubject by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -99,7 +99,7 @@ fun DeviceScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(80.dp)
-                            .clickable { onSubjectClick(index, subject) }
+                            .clickable { selectedSubject = subject }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -119,6 +119,59 @@ fun DeviceScreen(
                 }
             }
         }
+    }
+
+    // حوار التفاصيل
+    selectedSubject?.let { subject ->
+        AlertDialog(
+            onDismissRequest = { selectedSubject = null },
+            title = {
+                Text(
+                    text = "تفاصيل المادة",
+                    color = TextGold,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "المادة: $subject",
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "الجهاز: $deviceName",
+                        color = TextSecondary,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "اضغط على الزر أدناه لعرض المحتوى التعليمي الكامل لهذه المادة (12 قسماً).",
+                        color = TextOrange,
+                        fontSize = 13.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val courseId = "$deviceName-$subject".replace(" ", "_")
+                        onCourseClick(courseId)
+                        selectedSubject = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Secondary)
+                ) {
+                    Text("عرض المحتوى التعليمي 📚")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { selectedSubject = null }) {
+                    Text("إغلاق", color = Color.White.copy(alpha = 0.6f))
+                }
+            },
+            containerColor = PrimaryLight
+        )
     }
 }
 // @builder:end

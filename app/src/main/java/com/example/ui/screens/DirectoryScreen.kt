@@ -1,12 +1,11 @@
+// @builder:file app/src/main/java/com/example/ui/screens/DirectoryScreen.kt
 package com.example.ui.screens
 
 import android.content.Intent
-import android.net.Uri
 import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -80,12 +79,9 @@ fun DirectoryScreen(
             Toast.makeText(context, "التعرف على الصوت غير مدعوم على جهازك", Toast.LENGTH_SHORT).show()
         }
     }
-    
-    var selectedDeviceDetail by remember { mutableStateOf<String?>(null) }
 
     val chapters = remember { repository.getChapters() }
-    val courseGuides = remember { repository.allBooks.filter { it.type == "book" || it.type == "general" } }
-    
+    val allBooks = remember { repository.allBooks }
     val hospitalDevices = remember {
         repository.allBooks.filter { it.type == "subject" }
             .groupBy { book ->
@@ -112,7 +108,7 @@ fun DirectoryScreen(
         }
 
         Text(
-            text = "تصفح فوري ومصنف شامل للمقررات الدراسية، الأدلة المنظمة، وبلوكات أجهزة الجسم الحيوية.",
+            text = "تصفح فوري ومصنف شامل للمقررات الدراسية، الأقسام التعليمية، وبلوكات أجهزة الجسم الحيوية.",
             fontSize = 13.sp, color = TextSecondary,
             modifier = Modifier.padding(bottom = 16.dp), lineHeight = 18.sp
         )
@@ -135,7 +131,7 @@ fun DirectoryScreen(
             shape = RoundedCornerShape(12.dp), singleLine = true
         )
 
-        // التبويبات
+        // التبويبات (تم تعديلها)
         TabRow(
             selectedTabIndex = selectedTab, containerColor = Color.Transparent,
             contentColor = Secondary,
@@ -145,23 +141,15 @@ fun DirectoryScreen(
             },
             modifier = Modifier.padding(bottom = 16.dp)
         ) {
-            listOf("🎓 المناهج الدراسية", "📖 أدلة المقررات", "🫁 بلوكات أجهزة الجسم", "📝 توصيفات المقررات")
-                .forEachIndexed { index, title ->
-                    Tab(selected = selectedTab == index,
-                        onClick = {
-                            if (index == 3) {
-                                onNavigateToCourseDescriptions()
-                            } else {
-                                selectedTab = index
-                                selectedDeviceDetail = null
-                            }
-                        },
-                        text = {
-                            Text(text = title, fontSize = 13.sp,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedTab == index) TextGold else TextSecondary)
-                        })
-                }
+            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = {
+                Text("🎓 المناهج الدراسية", fontSize = 13.sp, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal, color = if (selectedTab == 0) TextGold else TextSecondary)
+            })
+            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = {
+                Text("📚 الأقسام التعليمية", fontSize = 13.sp, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal, color = if (selectedTab == 1) TextGold else TextSecondary)
+            })
+            Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = {
+                Text("📝 التوصيفات", fontSize = 13.sp, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal, color = if (selectedTab == 2) TextGold else TextSecondary)
+            })
         }
 
         // منطقة المحتوى
@@ -202,116 +190,85 @@ fun DirectoryScreen(
                 }
 
                 1 -> {
-                    // ⭐ 📖 أدلة المقررات – عرض بالرفوف و Book3DCard (محدث)
-                    val filteredGuides = courseGuides.filter { it.title.contains(searchQuery, ignoreCase = true) }
-                    if (filteredGuides.isEmpty()) {
-                        EmptyStateView("لا توجد أدلة مقررات أو كتب علمية تطابق بحثك.")
-                    } else {
-                        val shelves = filteredGuides.chunked(3)
-                        LazyColumn(
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(28.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(shelves.size) { shelfIndex ->
-                                Shelf(modifier = Modifier.fillMaxWidth()) {
-                                    shelves[shelfIndex].forEach { book ->
-                                        Book3DCard(
-                                            bookTitle = book.title,
-                                            coverPath = book.cover_path,
-                                            activeBaseDir = repository.activeBaseDir,
-                                            onClick = {
-                                                val courseId = book.title
-                                                    .replace(" ", "_")
-                                                    .replace(":", "")
-                                                    .replace("-", "_")
-                                                    .trim()
-                                                onNavigateToCourseDetail(courseId)
+                    // 📚 الأقسام التعليمية (دمج المقررات + الأجهزة)
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // قسم المقررات الدراسية (رفوف)
+                        item {
+                            Text("المقررات الدراسية", color = TextGold, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(horizontal = 16.dp))
+                            val filteredBooks = allBooks.filter { it.title.contains(searchQuery, ignoreCase = true) && it.type != "subject" }
+                            if (filteredBooks.isNotEmpty()) {
+                                val shelves = filteredBooks.chunked(3)
+                                LazyColumn(
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(28.dp),
+                                    modifier = Modifier.height(200.dp)
+                                ) {
+                                    items(shelves.size) { shelfIndex ->
+                                        Shelf(modifier = Modifier.fillMaxWidth()) {
+                                            shelves[shelfIndex].forEach { book ->
+                                                Book3DCard(
+                                                    bookTitle = book.title,
+                                                    coverPath = book.cover_path,
+                                                    activeBaseDir = repository.activeBaseDir,
+                                                    onClick = {
+                                                        val courseId = book.title
+                                                            .replace(" ", "_")
+                                                            .replace(":", "")
+                                                            .replace("-", "_")
+                                                            .trim()
+                                                        onNavigateToCourseDetail(courseId)
+                                                    }
+                                                )
                                             }
-                                        )
+                                        }
                                     }
                                 }
+                            } else {
+                                EmptyStateView("لا توجد مقررات.")
+                            }
+                        }
+                        
+                        item {
+                            Divider(color = Secondary, thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
+                        }
+
+                        // قسم الأجهزة الطبية
+                        item {
+                            Text("الأجهزة الطبية", color = TextGold, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(horizontal = 16.dp))
+                            val filteredDevices = hospitalDevices.filter { it.key.contains(searchQuery, ignoreCase = true) }
+                            if (filteredDevices.isNotEmpty()) {
+                                filteredDevices.forEach { (deviceName, _) ->
+                                    Card(colors = CardDefaults.cardColors(containerColor = Color(0x18FFFFFF)),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                                            .border(1.dp, Secondary.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                                            .clickable {
+                                                // الانتقال إلى شاشة DeviceScreen لعرض المواد
+                                                onNavigateToChapter("class5", deviceName)
+                                            }) {
+                                        Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF1B314B)), contentAlignment = Alignment.Center) {
+                                                Text(text = getDeviceEmojiIcon(deviceName), fontSize = 26.sp)
+                                            }
+                                            Spacer(modifier = Modifier.width(14.dp))
+                                            Text(text = deviceName, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextGold)
+                                        }
+                                    }
+                                }
+                            } else {
+                                EmptyStateView("لا توجد أجهزة.")
                             }
                         }
                     }
                 }
 
                 2 -> {
-                    // 🫁 ...
-                    if (selectedDeviceDetail == null) {
-                        val filteredDevices = hospitalDevices.keys.filter { it.contains(searchQuery, ignoreCase = true) }
-                        if (filteredDevices.isEmpty()) {
-                            EmptyStateView("لم يتم العثور على بلوكات أجهزة جسم تطابق البحث.")
-                        } else {
-                            LazyVerticalGrid(columns = GridCells.Fixed(1),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.fillMaxSize()) {
-                                items(filteredDevices) { deviceName ->
-                                    val deviceBooks = hospitalDevices[deviceName] ?: emptyList()
-                                    Card(colors = CardDefaults.cardColors(containerColor = Color(0x18FFFFFF)),
-                                        modifier = Modifier.fillMaxWidth()
-                                            .border(1.dp, Secondary.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                                            .clickable { selectedDeviceDetail = deviceName }) {
-                                        Row(modifier = Modifier.fillMaxWidth().padding(14.dp),
-                                            verticalAlignment = Alignment.CenterVertically) {
-                                            Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp))
-                                                .background(Color(0xFF1B314B)), contentAlignment = Alignment.Center) {
-                                                Text(text = getDeviceEmojiIcon(deviceName), fontSize = 26.sp)
-                                            }
-                                            Spacer(modifier = Modifier.width(14.dp))
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(text = deviceName, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextGold)
-                                                Text(text = "يحتوي على ${deviceBooks.size} مساقات", fontSize = 11.sp, color = TextSecondary)
-                                            }
-                                            Text(text = "👈", fontSize = 18.sp)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        // عرض تفاصيل الجهاز
-                        val deviceName = selectedDeviceDetail!!
-                        val booksForDevice = hospitalDevices[deviceName]?.filter {
-                            it.title.contains(searchQuery, ignoreCase = true)
-                        } ?: emptyList()
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
-                                Button(onClick = { selectedDeviceDetail = null },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Secondary),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                    modifier = Modifier.height(30.dp)) {
-                                    Text("عودة للبلوكات ↩️", fontSize = 11.sp, color = Color.Black, fontWeight = FontWeight.Bold)
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(text = deviceName, fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                                    color = Color.White, modifier = Modifier.weight(1f))
-                            }
-                            if (booksForDevice.isEmpty()) {
-                                EmptyStateView("لا تتوفر مراجع داخل هذا الجهاز.")
-                            } else {
-                                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
-                                    items(booksForDevice) { book ->
-                                        Card(colors = CardDefaults.cardColors(containerColor = Color(0x10FFFFFF)),
-                                            modifier = Modifier.fillMaxWidth()
-                                                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(10.dp))
-                                                .clickable {
-                                                    onNavigateToPdf(book)
-                                                }) {
-                                            Row(modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                                verticalAlignment = Alignment.CenterVertically) {
-                                                Text("📄", fontSize = 22.sp)
-                                                Spacer(modifier = Modifier.width(12.dp))
-                                                Text(text = book.title, fontSize = 13.sp, color = Color.White, modifier = Modifier.weight(1f))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // 📝 توصيفات المقررات
+                    LaunchedEffect(Unit) { onNavigateToCourseDescriptions() }
                 }
             }
         }
@@ -343,3 +300,4 @@ private fun getDeviceEmojiIcon(deviceName: String): String {
         else -> "🏥"
     }
 }
+// @builder:end
