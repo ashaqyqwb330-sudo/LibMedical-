@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.DataProvider
 import com.example.data.StudyPlanProvider
+import com.example.model.BookEntry
 import com.example.ui.components.GlassCard
 import com.example.ui.theme.*
 
@@ -26,7 +27,8 @@ fun DeviceScreen(
     chapterId: String,
     deviceName: String,
     onBack: () -> Unit,
-    onCourseClick: (String) -> Unit  // دالة جديدة للانتقال إلى CourseDetailScreen
+    // المعامل القديم: يفتح شاشة المحتويات الثلاثة
+    onSubjectClick: (subjectIndex: Int, subjectTitle: String) -> Unit
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
@@ -36,7 +38,9 @@ fun DeviceScreen(
         StudyPlanProvider.getMedicalSystems().firstOrNull { it.nameAr == deviceName }
     }
 
-    var selectedSubject by remember { mutableStateOf<String?>(null) }
+    // حالة لعرض الحوار
+    var selectedSubjectIndex by remember { mutableIntStateOf(-1) }
+    var selectedSubjectTitle by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -99,7 +103,11 @@ fun DeviceScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(80.dp)
-                            .clickable { selectedSubject = subject }
+                            .clickable {
+                                // عند النقر: إظهار الحوار
+                                selectedSubjectIndex = index
+                                selectedSubjectTitle = subject
+                            }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -121,52 +129,59 @@ fun DeviceScreen(
         }
     }
 
-    // حوار التفاصيل
-    selectedSubject?.let { subject ->
+    // حوار التفاصيل (مثل المواد العامة تماماً)
+    if (selectedSubjectIndex >= 0) {
         AlertDialog(
-            onDismissRequest = { selectedSubject = null },
+            onDismissRequest = { selectedSubjectIndex = -1 },
             title = {
                 Text(
-                    text = "تفاصيل المادة",
+                    text = "معلومات المنهج الدراسي",
                     color = TextGold,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
                 )
             },
             text = {
                 Column {
                     Text(
-                        text = "المادة: $subject",
+                        text = "العنوان العلمي: $selectedSubjectTitle",
                         color = Color.White,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "الجهاز: $deviceName",
                         color = TextSecondary,
-                        fontSize = 14.sp
+                        fontSize = 13.sp
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "اضغط على الزر أدناه لعرض المحتوى التعليمي الكامل لهذه المادة (12 قسماً).",
+                        text = "ملاحظة: يجري تحميل المستند الطبي من الخادم الآمن للقوات المسلحة لحفظ الأصول الفكرية.",
                         color = TextOrange,
-                        fontSize = 13.sp
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        val courseId = "$deviceName-$subject".replace(" ", "_")
-                        onCourseClick(courseId)
-                        selectedSubject = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Secondary)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Text("عرض المحتوى التعليمي 📚")
+                    TextButton(
+                        onClick = {
+                            // فتح عارض PDF مباشرة
+                            onSubjectClick(selectedSubjectIndex, selectedSubjectTitle)
+                            selectedSubjectIndex = -1
+                        }
+                    ) {
+                        Text("قراءة في التطبيق 📖", color = Secondary, fontWeight = FontWeight.Bold)
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { selectedSubject = null }) {
+                TextButton(onClick = { selectedSubjectIndex = -1 }) {
                     Text("إغلاق", color = Color.White.copy(alpha = 0.6f))
                 }
             },
