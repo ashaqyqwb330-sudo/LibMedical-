@@ -1,4 +1,3 @@
-
 // @builder:file app/src/main/java/com/example/ui/screens/DirectoryScreen.kt
 package com.example.ui.screens
 
@@ -7,9 +6,13 @@ import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -26,6 +29,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -35,8 +39,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.DataProvider
 import com.example.model.BookEntry
-import com.example.ui.components.GlassCard
 import com.example.ui.theme.*
+
+// مكون إحصائية سريعة
+@Composable
+fun StatCard(emoji: String, value: String, label: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = TextGold.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, TextGold.copy(alpha = 0.12f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(emoji, fontSize = 18.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextGold)
+                Text(label, fontSize = 10.sp, color = TextSecondary)
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +80,29 @@ fun DirectoryScreen(
     
     var selectedTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
+
+    // تأثيرات الحركة
+    val infiniteTransition = rememberInfiniteTransition(label = "bg_anim")
+    val bgOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bg_offset"
+    )
+    
+    // تأثير النبض للميكروفون
+    val micScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "mic_scale"
+    )
 
     val speechRecognizerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -82,6 +131,7 @@ fun DirectoryScreen(
     }
 
     val chapters = remember { repository.getChapters() }
+    val totalBooks = remember { chapters.sumOf { it.bookCount } }
 
     Column(
         modifier = Modifier
@@ -90,7 +140,7 @@ fun DirectoryScreen(
                 Brush.verticalGradient(
                     listOf(
                         Color(0xFF020810),
-                        Color(0xFF0A1A2F),
+                        Color(0xFF0A1A2F).let { it.copy(red = it.red + bgOffset * 0.01f) },
                         Primary,
                         Color(0xFF0F1F33)
                     )
@@ -221,7 +271,7 @@ fun DirectoryScreen(
                         }
                     } else {
                         IconButton(onClick = { startVoiceInput() }) {
-                            Text("🎤", fontSize = 18.sp)
+                            Text("🎤", fontSize = 18.sp, modifier = Modifier.scale(micScale))
                         }
                     }
                 },
@@ -237,6 +287,19 @@ fun DirectoryScreen(
                 shape = RoundedCornerShape(16.dp),
                 singleLine = true
             )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ========== شريط الإحصاءات السريعة ==========
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            StatCard("📚", "$totalBooks", "مقرر", modifier = Modifier.weight(1f))
+            StatCard("🎓", "${chapters.size}", "فصل", modifier = Modifier.weight(1f))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -371,11 +434,21 @@ fun DirectoryScreen(
                             }
                             
                             items(filteredChapters) { chapter ->
+                                val interactionSource = remember { MutableInteractionSource() }
+                                val isPressed by interactionSource.collectIsPressedAsState()
+                                val glowColor by animateColorAsState(
+                                    if (isPressed) TextGold.copy(alpha = 0.2f) else Color.Transparent,
+                                    label = "glow"
+                                )
+                                
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(150.dp)
-                                        .clickable {
+                                        .clickable(
+                                            interactionSource = interactionSource,
+                                            indication = null
+                                        ) {
                                             val (_, generals, devices) = repository.getBooksInChapter(chapter.id)
                                             if (generals.isEmpty() && devices.isEmpty())
                                                 onNavigateToBooks(chapter.name)
@@ -383,8 +456,8 @@ fun DirectoryScreen(
                                         },
                                     shape = RoundedCornerShape(16.dp),
                                     colors = CardDefaults.cardColors(containerColor = Color(0x15FFFFFF)),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, glowColor.let { if (isPressed) it else Color.White.copy(alpha = 0.08f) }),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = if (isPressed) 8.dp else 4.dp)
                                 ) {
                                     Column(
                                         modifier = Modifier.fillMaxSize().padding(14.dp),
@@ -411,18 +484,31 @@ fun DirectoryScreen(
                                             lineHeight = 17.sp
                                         )
                                         
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(TextGold.copy(alpha = 0.12f))
-                                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                                        ) {
-                                            Text(
-                                                text = "${chapter.bookCount} مقرر",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = TextOrange
-                                            )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(TextGold.copy(alpha = 0.12f))
+                                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "${chapter.bookCount} مقرر",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = TextOrange
+                                                )
+                                            }
+                                            if (chapter.bookCount > 0) {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(4.dp))
+                                                        .background(Color(0xFF4CAF50).copy(alpha = 0.2f))
+                                                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text("متاح", fontSize = 9.sp, color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -462,17 +548,27 @@ fun DirectoryScreen(
                             }
                             
                             items(filteredChapters) { chapter ->
+                                val interactionSource = remember { MutableInteractionSource() }
+                                val isPressed by interactionSource.collectIsPressedAsState()
+                                val glowColor by animateColorAsState(
+                                    if (isPressed) TextGold.copy(alpha = 0.25f) else Color.Transparent,
+                                    label = "glow_tab2"
+                                )
+                                
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { onNavigateToChapter12(chapter.id, chapter.name) },
+                                        .clickable(
+                                            interactionSource = interactionSource,
+                                            indication = null
+                                        ) { onNavigateToChapter12(chapter.id, chapter.name) },
                                     shape = RoundedCornerShape(16.dp),
                                     colors = CardDefaults.cardColors(containerColor = Color(0x15FFFFFF)),
                                     border = androidx.compose.foundation.BorderStroke(
                                         1.dp,
-                                        if (chapter.bookCount > 0) TextGold.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.06f)
+                                        if (isPressed) glowColor else if (chapter.bookCount > 0) TextGold.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.06f)
                                     ),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                    elevation = CardDefaults.cardElevation(defaultElevation = if (isPressed) 6.dp else 2.dp)
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(16.dp),

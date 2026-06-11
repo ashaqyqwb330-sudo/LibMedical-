@@ -1,178 +1,226 @@
+// @builder:file app/src/main/java/com/example/ui/components/Book3DCard.kt
 package com.example.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.Secondary
-import com.example.ui.theme.TextGold
-import coil.compose.AsyncImage
+import com.example.ui.theme.*
 import java.io.File
 
 @Composable
 fun Book3DCard(
     bookTitle: String,
+    coverPath: String?,
+    activeBaseDir: File?,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    coverPath: String? = null,
-    activeBaseDir: File? = null,
-    onClick: () -> Unit = {}
+    width: Dp = 140.dp,
+    height: Dp = 200.dp
 ) {
-    var rawRotationX by remember { mutableStateOf(0f) }
-    var rawRotationY by remember { mutableStateOf(0f) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
 
-    val rotationX by animateFloatAsState(targetValue = rawRotationX, animationSpec = spring())
-    val rotationY by animateFloatAsState(targetValue = rawRotationY, animationSpec = spring())
+    // تأثير الضغط: تصغير بسيط مع ارتفاع
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.93f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "book_scale"
+    )
 
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val coverModel = remember(coverPath, activeBaseDir) {
-        if (coverPath.isNullOrEmpty()) {
-            null
-        } else {
-            val normalizedCoverPath = coverPath.replace("\\", "/").trim().removePrefix("/")
-            var foundFile: File? = null
-            if (activeBaseDir != null) {
-                val f = File(activeBaseDir, normalizedCoverPath)
-                if (f.exists()) {
-                    foundFile = f
-                }
-            }
-            if (foundFile == null) {
-                val packageName = context.packageName
-                val bases = listOfNotNull(
-                    context.getExternalFilesDir(null),
-                    context.getExternalFilesDir(null)?.let { File(it, "data") },
-                    context.filesDir,
-                    File(context.filesDir, "data"),
-                    File("/storage/emulated/0/Android/data/$packageName/files"),
-                    File("/storage/emulated/0/Android/data/$packageName/files/data"),
-                    File("/storage/emulated/0/Android/data/com.aistudio.militarymedicallibrary.bchskv/files"),
-                    File("/storage/emulated/0/Android/data/com.aistudio.militarymedicallibrary.bchskv/files/data")
-                )
-                for (base in bases) {
-                    val f = File(base, normalizedCoverPath)
-                    if (f.exists() && f.isFile) {
-                        foundFile = f
-                        break
-                    }
-                }
-            }
-            foundFile ?: "file:///android_asset/data/$normalizedCoverPath"
+    // تأثير الظل: يزيد عند الضغط
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 12.dp else 6.dp,
+        animationSpec = tween(200),
+        label = "book_elevation"
+    )
+
+    // تأثير التوهج الذهبي عند الضغط
+    val glowColor by animateColorAsState(
+        targetValue = if (isPressed) Color(0xFFD4AF37).copy(alpha = 0.4f) else Color.White.copy(alpha = 0.08f),
+        animationSpec = tween(200),
+        label = "book_glow"
+    )
+
+    // دوران خفيف للكتاب (تأثير 3D)
+    val rotationX by animateFloatAsState(
+        targetValue = if (isPressed) -5f else 0f,
+        animationSpec = tween(300),
+        label = "book_rot_x"
+    )
+    val rotationY by animateFloatAsState(
+        targetValue = if (isPressed) 3f else 0f,
+        animationSpec = tween(300),
+        label = "book_rot_y"
+    )
+
+    // استخراج رمز المقرر من العنوان (للأيقونة)
+    val courseEmoji = remember(bookTitle) {
+        when {
+            bookTitle.contains("تشريح") || bookTitle.contains("التشريح") -> "🦴"
+            bookTitle.contains("قلب") || bookTitle.contains("القلبي") -> "🫀"
+            bookTitle.contains("تنفس") || bookTitle.contains("التنفسي") -> "🫁"
+            bookTitle.contains("هضم") || bookTitle.contains("الهضمي") -> "🍕"
+            bookTitle.contains("بولي") || bookTitle.contains("تناسلي") -> "🧬"
+            bookTitle.contains("عصبي") || bookTitle.contains("الأعصاب") -> "🧠"
+            bookTitle.contains("دم") || bookTitle.contains("الدموي") -> "🩸"
+            bookTitle.contains("أدوية") || bookTitle.contains("الأدوية") -> "💊"
+            bookTitle.contains("جراحة") || bookTitle.contains("الجراحة") -> "🔪"
+            bookTitle.contains("أطفال") || bookTitle.contains("الأطفال") -> "👶"
+            bookTitle.contains("نساء") || bookTitle.contains("توليد") -> "🤰"
+            bookTitle.contains("عيون") || bookTitle.contains("العيون") -> "👁️"
+            bookTitle.contains("أنف") || bookTitle.contains("أذن") -> "👂"
+            bookTitle.contains("جلدية") || bookTitle.contains("الجلدية") -> "🧴"
+            bookTitle.contains("أشعة") || bookTitle.contains("الأشعة") -> "🩻"
+            bookTitle.contains("نفسي") || bookTitle.contains("النفسي") -> "🧘"
+            bookTitle.contains("طوارئ") || bookTitle.contains("الطوارئ") -> "🚨"
+            bookTitle.contains("تخدير") || bookTitle.contains("التخدير") -> "😴"
+            bookTitle.contains("ثقافة") || bookTitle.contains("إسلامية") -> "📖"
+            bookTitle.contains("لغة") || bookTitle.contains("إنجليزية") -> "🔤"
+            bookTitle.contains("حاسوب") || bookTitle.contains("كمبيوتر") -> "💻"
+            bookTitle.contains("فيزياء") || bookTitle.contains("كيمياء") -> "⚗️"
+            bookTitle.contains("أخلاق") || bookTitle.contains("الأخلاق") -> "⚖️"
+            bookTitle.contains("مصطلحات") || bookTitle.contains("المصطلحات") -> "📝"
+            bookTitle.contains("إحصاء") || bookTitle.contains("الإحصاء") -> "📊"
+            bookTitle.contains("مناعة") || bookTitle.contains("المناعة") -> "🛡️"
+            bookTitle.contains("تغذية") || bookTitle.contains("التغذية") -> "🥗"
+            bookTitle.contains("صماء") || bookTitle.contains("الغدد") -> "🦋"
+            bookTitle.contains("بحث") || bookTitle.contains("تخرج") -> "🎓"
+            else -> "📗"
         }
     }
 
     Box(
         modifier = modifier
-            .size(130.dp, 195.dp)
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        if (event.type == PointerEventType.Move) {
-                            val position = event.changes.firstOrNull()?.position
-                            if (position != null) {
-                                val centerX = size.width / 2f
-                                val centerY = size.height / 2f
-                                rawRotationY = ((position.x - centerX) / centerX) * 18f
-                                rawRotationX = ((position.y - centerY) / centerY) * -12f
-                            }
-                        } else if (event.type == PointerEventType.Exit || event.type == PointerEventType.Release) {
-                            rawRotationX = 0f
-                            rawRotationY = 0f
-                        }
-                    }
-                }
-            }
-            .graphicsLayer {
-                this.rotationY = rotationY
-                this.rotationX = rotationX
-                cameraDistance = 12f * density
-            }
-            .clickable { onClick() }
+            .width(width)
+            .height(height)
+            .scale(scale)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onClick() }
     ) {
-        Row(
+        // ظل الكتاب (طبقة سفلى)
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .shadow(8.dp, RoundedCornerShape(3.dp))
+                .offset(y = elevation, x = elevation / 2)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.Black.copy(alpha = 0.3f))
+        )
+
+        // جسم الكتاب الرئيسي
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(12.dp))
                 .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFF162540),
-                            Color(0xFF0A1128)
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF1A2740),
+                            Color(0xFF0F1F33),
+                            Color(0xFF0B1A2E)
                         )
-                    ),
-                    RoundedCornerShape(3.dp)
+                    )
                 )
-                .border(
-                    1.5.dp,
-                    Secondary,
-                    RoundedCornerShape(3.dp)
-                )
+                .border(1.5.dp, glowColor, RoundedCornerShape(12.dp))
+                .padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // شريط علوي ذهبي (كعب الكتاب)
             Box(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .width(8.dp)
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
                     .background(
                         Brush.horizontalGradient(
                             listOf(
-                                Color(0xFFD4AF37),
-                                Color(0xFF9A7B1C)
+                                TextGold.copy(alpha = 0.4f),
+                                TextGold,
+                                TextGold.copy(alpha = 0.4f)
                             )
                         )
                     )
             )
-            Column(
+
+            // أيقونة المقرر
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.White.copy(alpha = 0.06f)),
+                contentAlignment = Alignment.Center
             ) {
-                if (coverModel != null) {
-                    AsyncImage(
-                        model = coverModel,
-                        contentDescription = bookTitle,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .padding(bottom = 2.dp)
-                    )
-                } else {
-                    Text(
-                        text = "📘",
-                        fontSize = 32.sp
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
+                Text(courseEmoji, fontSize = 24.sp)
+            }
+
+            // عنوان الكتاب
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = bookTitle,
-                    color = TextGold,
-                    fontSize = 10.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
+                    color = TextGold,
                     textAlign = TextAlign.Center,
-                    maxLines = 2,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
-                    lineHeight = 12.sp
+                    lineHeight = 16.sp
                 )
             }
+
+            // شريط سفلي ذهبي
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                TextGold.copy(alpha = 0.2f),
+                                TextGold.copy(alpha = 0.5f),
+                                TextGold.copy(alpha = 0.2f)
+                            )
+                        )
+                    )
+            )
         }
+
+        // تأثير انعكاس خفيف (شعاع ضوء)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.6f)
+                .fillMaxHeight(0.15f)
+                .align(Alignment.TopCenter)
+                .offset(y = 4.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color.White.copy(alpha = 0.04f))
+        )
     }
 }
+// @builder:end
