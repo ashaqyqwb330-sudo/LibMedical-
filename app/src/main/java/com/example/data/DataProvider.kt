@@ -737,4 +737,35 @@ class DataProvider(private val context: Context) {
         )
         return icons[num] ?: "📚"
     }
+
+    fun getDeviceSubjectsDirect(chapterId: String, device: String): List<DirectSubjectItem> {
+        val (_, _, devices) = getBooksInChapter(chapterId)
+        val subjects = devices[device] ?: return emptyList()
+        
+        val grouped = mutableMapOf<String, String>()
+        subjects.forEach { book ->
+            val titleWithoutDevice = book.title.substringBeforeLast(" - $device").substringBeforeLast(" - ")
+            val cleanTitle = titleWithoutDevice.replace(Regex("\\s*\\((النظري|العملي|المرجع)\\)"), "").trim()
+            val pdfPath = book.directPdf ?: book.file.replace("\\", "/")
+            grouped[cleanTitle] = pdfPath
+        }
+        return grouped.map { DirectSubjectItem(it.key, it.value) }.sortedBy { it.title }
+    }
+
+    fun getGeneralSubjectsDirect(chapterId: String): List<DirectSubjectItem> {
+        val (_, generals, _) = getBooksInChapter(chapterId)
+        
+        val grouped = mutableMapOf<String, String>()
+        generals.forEach { book ->
+            val cleanTitle = book.title.replace(Regex("\\s*\\((النظري|العملي|المرجع)\\)"), "").trim()
+            val pdfPath = book.directPdf ?: book.file.replace("\\", "/")
+            grouped[cleanTitle] = pdfPath
+        }
+        return grouped.map { DirectSubjectItem(it.key, it.value) }.sortedBy { it.title }
+    }
 }
+
+data class DirectSubjectItem(
+    val title: String,
+    val directPdfPath: String
+)

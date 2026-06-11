@@ -28,7 +28,8 @@ data class BookEntry(
     val title: String,
     val type: String,
     val file: String,
-    val cover_path: String
+    val cover_path: String,
+    val directPdf: String? = null
 )
 
 data class Chapter(

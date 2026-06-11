@@ -110,8 +110,8 @@ fun NavGraph(navController: NavHostController) {
                 chapterId = chapterId,
                 deviceName = deviceName,
                 onBack = { navController.popBackStack() },
-                onSubjectClick = { index, title ->
-                    navController.navigate("subject/$chapterId/${Uri.encode(deviceName)}/${Uri.encode(title)}/$index/false")
+                onOpenPdf = { title, pdfPath ->
+                    navController.navigate("pdf_viewer/${Uri.encode(title)}/${Uri.encode(pdfPath)}")
                 }
             )
         }
