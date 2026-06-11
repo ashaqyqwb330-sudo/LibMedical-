@@ -3,6 +3,7 @@ package com.example.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,10 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,9 +33,37 @@ import androidx.compose.ui.unit.sp
 import com.example.data.DataProvider
 import com.example.data.DirectSubjectItem
 import com.example.data.StudyPlanProvider
+import com.example.ui.components.Book3DCard
 import com.example.ui.components.GlassCard
+import com.example.ui.components.Shelf
 import com.example.ui.components.StaggeredEntrance
 import com.example.ui.theme.*
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
+
+// جسيمات خلفية متحركة
+@Composable
+fun ParticleBackground(modifier: Modifier = Modifier) {
+    val particles = remember { List(20) { ParticleState(Random.nextFloat(), Random.nextFloat(), Random.nextFloat() * 0.6f + 0.4f) } }
+    val infiniteTransition = rememberInfiniteTransition(label = "particles")
+    val time by infiniteTransition.animateFloat(0f, 1f, infiniteRepeatable(tween(4000, easing = LinearEasing)), label = "time")
+
+    Canvas(modifier = modifier.fillMaxSize()) {
+        particles.forEach { p ->
+            val x = (p.baseX + time * 0.1f) % 1.1f - 0.05f
+            val y = (p.baseY + sin(time * p.speed * 2 * Math.PI.toFloat())) * 0.1f
+            val alpha = (0.15f + 0.1f * cos(time * p.speed * 3 * Math.PI.toFloat()))
+            drawCircle(
+                color = Color.White.copy(alpha = alpha),
+                radius = 2.5f * p.size,
+                center = Offset(size.width * x, size.height * (p.baseY + y))
+            )
+        }
+    }
+}
+
+class ParticleState(val baseX: Float, val baseY: Float, val speed: Float, val size: Float = 1f)
 
 @Composable
 fun ChapterScreen(
@@ -48,321 +78,220 @@ fun ChapterScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
+    
     val generalsDirect = remember(chapterId) { repository.getGeneralSubjectsDirect(chapterId) }
     val (_, _, devicesMap) = remember { repository.getBooksInChapter(chapterId) }
     val deviceNames = remember { devicesMap.keys.toList() }
 
-    val chapterNumber = remember(chapterId) {
-        chapterId.removePrefix("class").toIntOrNull() ?: 1
-    }
+    val chapterNumber = remember(chapterId) { chapterId.removePrefix("class").toIntOrNull() ?: 1 }
     val semesterInfo = remember(chapterNumber) {
-        StudyPlanProvider.getStages()
-            .flatMap { it.semesters }
-            .firstOrNull { it.id == chapterNumber }
+        StudyPlanProvider.getStages().flatMap { it.semesters }.firstOrNull { it.id == chapterNumber }
     }
 
     var selectedGeneralSubject by remember { mutableStateOf<DirectSubjectItem?>(null) }
 
-    // تأثيرات حركية
-    val infiniteTransition = rememberInfiniteTransition(label = "chapter_anim")
+    val infiniteTransition = rememberInfiniteTransition(label = "ch_anim")
+    val headerGlow by infiniteTransition.animateFloat(0.3f, 0.8f, infiniteRepeatable(tween(2500), RepeatMode.Reverse), label = "hdr")
+    val borderDashOffset by infiniteTransition.animateFloat(0f, 40f, infiniteRepeatable(tween(1000, easing = LinearEasing)), label = "border_dash")
 
-    val headerGlow by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(tween(2500), RepeatMode.Reverse),
-        label = "header_glow"
-    )
+    val isEmpty = generalsDirect.isEmpty() && deviceNames.isEmpty()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF020810),
-                        Color(0xFF0A1A2F),
-                        Primary,
-                        Color(0xFF0F1F33)
-                    )
-                )
-            )
-    ) {
-        // ===== رأس الصفحة السينمائي =====
-        Box(
+    Box(modifier = Modifier.fillMaxSize()) {
+        // خلفية متحركة + جسيمات
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color.Transparent,
-                            TextGold.copy(alpha = headerGlow * 0.2f),
-                            TextGold.copy(alpha = headerGlow * 0.1f),
-                            Color.Transparent
-                        )
+                    Brush.verticalGradient(
+                        listOf(Color(0xFF020810), Color(0xFF0A1A2F), Primary, Color(0xFF0F1F33))
                     )
                 )
-                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // زر الرجوع الزجاجي
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.08f))
-                        .clickable { onBack() },
-                    contentAlignment = Alignment.Center
-                ) { Text("↩️", fontSize = 20.sp) }
+            ParticleBackground(modifier = Modifier.fillMaxSize().weight(1f))
+        }
 
-                Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.fillMaxSize()) {
+            // ===== رأس سينمائي مع خط زخرفي =====
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Brush.horizontalGradient(listOf(Color.Transparent, TextGold.copy(alpha = headerGlow * 0.3f), TextGold.copy(alpha = headerGlow * 0.15f), Color.Transparent)))
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.08f)).clickable { onBack() }, contentAlignment = Alignment.Center) { Text("↩️", fontSize = 20.sp) }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(chapterName, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextGold)
+                        if (semesterInfo != null) Text("${semesterInfo.totalCreditHours} ساعة معتمدة | ${semesterInfo.totalActualHours} ساعة فعلية", fontSize = 11.sp, color = TextSecondary)
+                    }
+                    if (isTab2) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(TextGold.copy(alpha = 0.2f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                            Text("12 قسماً", fontSize = 10.sp, color = TextGold, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
 
+            // خط زخرفي متقطع يتحرك
+            Canvas(modifier = Modifier.fillMaxWidth().height(2.dp)) {
+                drawLine(
+                    color = TextGold.copy(alpha = 0.6f),
+                    start = Offset(0f, 0f),
+                    end = Offset(size.width, 0f),
+                    strokeWidth = 1.5f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 10f), borderDashOffset)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (isEmpty) {
+                // ===== حالة فارغة – فنية جداً =====
+                Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val floatAnim by infiniteTransition.animateFloat(0f, -15f, infiniteRepeatable(tween(1500, easing = EaseInOutCubic), RepeatMode.Reverse), label = "float")
+                        val rotAnim by infiniteTransition.animateFloat(-3f, 3f, infiniteRepeatable(tween(2000, easing = EaseInOutCubic), RepeatMode.Reverse), label = "rot")
+                        Box(modifier = Modifier.offset(y = floatAnim.dp).size(110.dp).clip(RoundedCornerShape(30.dp)).background(Brush.radialGradient(listOf(TextGold.copy(alpha = 0.25f), Color.Transparent))), contentAlignment = Alignment.Center) {
+                            Text("📭", fontSize = 52.sp)
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text("لا توجد مواد أو أجهزة", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextGold)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text("هذا الفصل الدراسي لا يحتوي حالياً على أي مواد عامة أو أجهزة طبية.\nسيتم إضافتها قريباً.", fontSize = 14.sp, color = TextSecondary, textAlign = TextAlign.Center, lineHeight = 22.sp)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        // خط ذهبي تحته نقاط متحركة
+                        Box(modifier = Modifier.width(100.dp).height(3.dp).background(Brush.horizontalGradient(listOf(TextGold, TextOrange, TextGold))))
+                    }
+                }
+            } else {
+                // ===== محتوى الفصل =====
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = chapterName,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextGold
-                    )
-                    if (semesterInfo != null) {
-                        Text(
-                            text = "إجمالي ${semesterInfo.totalCreditHours} ساعة معتمدة | ${semesterInfo.totalActualHours} ساعة فعلية",
-                            fontSize = 11.sp,
-                            color = TextSecondary
-                        )
+                    if (generalsDirect.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SectionHeader("📚 المواد العامة والمشتركة", TextOrange)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        // رفوف مع دخول متدرج
+                        val shelves = generalsDirect.chunked(3)
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(20.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(shelves.size) { shelfIndex ->
+                                StaggeredEntrance(delayPerItem = 100 * shelfIndex) {
+                                    Shelf(spacing = 12.dp, modifier = Modifier.wrapContentWidth()) {
+                                        shelves[shelfIndex].forEach { item ->
+                                            Book3DCard(
+                                                bookTitle = item.title,
+                                                coverPath = null,
+                                                activeBaseDir = null,
+                                                onClick = {
+                                                    if (isTab2 && onNavigateToCourseDetail != null) {
+                                                        onNavigateToCourseDetail(item.title.replace(" ", "_"))
+                                                    } else if (!isTab2 && onOpenPdfGeneral != null) {
+                                                        selectedGeneralSubject = item
+                                                    }
+                                                },
+                                                modifier = Modifier
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        if (deviceNames.isNotEmpty()) {
+                            Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Secondary.copy(alpha = 0.4f))
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
+
+                    if (deviceNames.isNotEmpty()) {
+                        SectionHeader("🫁 الأجهزة الطبية للفصل", Secondary)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            itemsIndexed(deviceNames) { index, device ->
+                                StaggeredEntrance(delayPerItem = 80 * index) {
+                                    EnhancedDeviceCard(
+                                        deviceName = device,
+                                        onClick = {
+                                            onNavigate(
+                                                if (isTab2) "device_subjects_12" else "device_subjects",
+                                                mapOf("chapterId" to chapterId, "deviceName" to device)
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // ===== قسم المواد العامة (إن وجدت) =====
-        if (generalsDirect.isNotEmpty()) {
-            SectionHeader("📚 المواد العامة والمشتركة", TextOrange)
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                itemsIndexed(generalsDirect) { index, item ->
-                    EnhancedSubjectCard(
-                        title = item.title,
-                        emoji = getSubjectEmoji(item.title),
-                        accentColor = TextOrange,
-                        onClick = {
-                            if (isTab2 && onNavigateToCourseDetail != null) {
-                                onNavigateToCourseDetail(item.title.replace(" ", "_"))
-                            } else if (!isTab2 && onOpenPdfGeneral != null) {
-                                selectedGeneralSubject = item
-                            }
-                        }
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Divider(modifier = Modifier.padding(horizontal = 16.dp), color = Secondary.copy(alpha = 0.3f))
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        // ===== قسم الأجهزة الطبية (إن وجدت) =====
-        if (deviceNames.isNotEmpty()) {
-            SectionHeader("🫁 الأجهزة الطبية للفصل", Secondary)
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                itemsIndexed(deviceNames) { _, device ->
-                    EnhancedDeviceCard(
-                        deviceName = device,
-                        onClick = {
-                            onNavigate(
-                                if (isTab2) "device_subjects_12" else "device_subjects",
-                                mapOf("chapterId" to chapterId, "deviceName" to device)
-                            )
-                        }
-                    )
-                }
-            }
-        }
-
-        // حالة فارغة
-        if (generalsDirect.isEmpty() && deviceNames.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("لا توجد مواد أو أجهزة لهذا الفصل.", color = TextSecondary)
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
     }
 
-    // حوار المادة العامة (للتبويب الأول)
+    // حوار المادة العامة
     if (selectedGeneralSubject != null && !isTab2 && onOpenPdfGeneral != null) {
         val item = selectedGeneralSubject!!
         AlertDialog(
             onDismissRequest = { selectedGeneralSubject = null },
             title = { Text("تفاصيل المادة", color = TextGold, fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    Text("العنوان: ${item.title}", color = Color.White)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("يمكنك فتح الملف مباشرة.", color = TextSecondary)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onOpenPdfGeneral(item.title, item.directPdfPath)
-                    selectedGeneralSubject = null
-                }) { Text("فتح الملف 📄", color = Secondary) }
-            },
+            text = { Column { Text("العنوان: ${item.title}", color = Color.White); Spacer(modifier = Modifier.height(12.dp)); Text("يمكنك فتح الملف مباشرة.", color = TextSecondary) } },
+            confirmButton = { TextButton(onClick = { onOpenPdfGeneral(item.title, item.directPdfPath); selectedGeneralSubject = null }) { Text("فتح الملف 📄", color = Secondary) } },
             dismissButton = { TextButton(onClick = { selectedGeneralSubject = null }) { Text("إغلاق") } },
             containerColor = Color(0xFF0F1F33)
         )
     }
 }
 
-// ========== مكونات مساعدة محسّنة ==========
-
 @Composable
 fun SectionHeader(title: String, accentColor: Color) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = accentColor)
         Spacer(modifier = Modifier.weight(1f))
-        Box(
-            modifier = Modifier
-                .width(30.dp)
-                .height(3.dp)
-                .background(Brush.horizontalGradient(listOf(accentColor, Color.Transparent)))
-        )
+        Box(modifier = Modifier.width(30.dp).height(3.dp).background(Brush.horizontalGradient(listOf(accentColor, Color.Transparent))))
     }
 }
 
 @Composable
-fun EnhancedSubjectCard(
-    title: String,
-    emoji: String,
-    accentColor: Color,
-    onClick: () -> Unit
-) {
+fun EnhancedDeviceCard(deviceName: String, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(if (isPressed) 0.94f else 1f, spring())
+    val emoji = getDeviceEmoji(deviceName)
+    val borderColor by animateColorAsState(
+        targetValue = if (isPressed) Secondary.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.08f),
+        animationSpec = tween(300)
+    )
 
     Card(
-        modifier = Modifier
-            .width(180.dp)
-            .height(130.dp)
-            .scale(scale)
-            .clickable(interactionSource, null) { onClick() },
+        modifier = Modifier.width(160.dp).height(120.dp).scale(scale).clickable(interactionSource, null) { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0x15FFFFFF)),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (isPressed) accentColor.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f)
-        )
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text(emoji, fontSize = 36.sp)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = title,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextGold,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            Text(deviceName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Secondary, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
 
-@Composable
-fun EnhancedDeviceCard(
-    deviceName: String,
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (isPressed) 0.94f else 1f, spring())
-
-    val emoji = when {
-        deviceName.contains("الهيكل العضلي") -> "🦴"
-        deviceName.contains("القلبي") -> "🫀"
-        deviceName.contains("التنفسي") -> "🫁"
-        deviceName.contains("الهضمي") -> "🍕"
-        deviceName.contains("البولي") || deviceName.contains("التناسلي") -> "🧬"
-        deviceName.contains("الدموي") || deviceName.contains("اللمفاوي") -> "🩸"
-        deviceName.contains("الصمائي") || deviceName.contains("الغدد") -> "🦋"
-        deviceName.contains("العصبي") -> "🧠"
-        else -> "🏥"
-    }
-
-    Card(
-        modifier = Modifier
-            .width(160.dp)
-            .height(120.dp)
-            .scale(scale)
-            .clickable(interactionSource, null) { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0x15FFFFFF)),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (isPressed) Secondary.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(emoji, fontSize = 36.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = deviceName,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = Secondary,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-private fun getSubjectEmoji(title: String): String = when {
-    title.contains("تشريح") -> "🦴"
-    title.contains("أدوية") -> "💊"
-    title.contains("جراحة") -> "🔪"
-    title.contains("أطفال") -> "👶"
-    title.contains("نساء") || title.contains("توليد") -> "🤰"
-    title.contains("باطن") -> "🩺"
-    title.contains("طوارئ") -> "🚨"
-    title.contains("تخدير") -> "😴"
-    title.contains("أشعة") -> "🩻"
-    title.contains("عيون") -> "👁️"
-    title.contains("جلد") -> "🧴"
-    title.contains("نفسي") -> "🧘"
-    title.contains("أنف") || title.contains("أذن") -> "👂"
-    title.contains("عظام") -> "🦴"
-    title.contains("أعصاب") || title.contains("عصبي") -> "🧠"
-    title.contains("شرعي") || title.contains("سموم") -> "⚖️"
-    title.contains("ثقافة") || title.contains("إسلام") -> "📖"
-    title.contains("لغة") -> "🔤"
-    title.contains("إحصاء") -> "📊"
-    title.contains("مناعة") -> "🛡️"
-    title.contains("تغذية") -> "🥗"
-    title.contains("بحث") -> "🎓"
-    else -> "📘"
+private fun getDeviceEmoji(name: String): String = when {
+    name.contains("الهيكل العضلي") -> "🦴"
+    name.contains("القلبي") -> "🫀"
+    name.contains("التنفسي") -> "🫁"
+    name.contains("الهضمي") -> "🍕"
+    name.contains("البولي") || name.contains("التناسلي") -> "🧬"
+    name.contains("الدموي") || name.contains("اللمفاوي") -> "🩸"
+    name.contains("الصمائي") || name.contains("الغدد") -> "🦋"
+    name.contains("العصبي") -> "🧠"
+    else -> "🏥"
 }
 // @builder:end

@@ -1,25 +1,33 @@
 // @builder:file app/src/main/java/com/example/ui/screens/DeviceScreen.kt
 package com.example.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.DataProvider
 import com.example.data.DirectSubjectItem
 import com.example.data.StudyPlanProvider
-import com.example.ui.components.GlassCard
 import com.example.ui.theme.*
 
 @Composable
@@ -27,8 +35,9 @@ fun DeviceScreen(
     chapterId: String,
     deviceName: String,
     onBack: () -> Unit,
-    onOpenPdf: ((title: String, pdfPath: String) -> Unit)? = null,   // للتبويب الأول
-    onOpenCourseDetail: ((String) -> Unit)? = null                   // للتبويب الثاني
+    onOpenPdf: ((title: String, pdfPath: String) -> Unit)? = null,
+    onOpenCourseDetail: ((String) -> Unit)? = null,
+    isTab2: Boolean = false  // للتمييز البصري
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
@@ -42,18 +51,33 @@ fun DeviceScreen(
 
     var selectedSubject by remember { mutableStateOf<DirectSubjectItem?>(null) }
 
+    // لون خلفية مختلف قليلاً للتبويب الثاني
+    val bgColor = if (isTab2) Color(0xFF0A1A2F) else Color(0xFF020810)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF020810), Primary, Color(0xFF0F1F33))))
+            .background(
+                Brush.verticalGradient(listOf(bgColor, Primary, Color(0xFF0F1F33)))
+            )
             .padding(16.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("↩️", fontSize = 24.sp, modifier = Modifier.clickable { onBack() }.padding(8.dp))
-            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.08f)).clickable { onBack() },
+                contentAlignment = Alignment.Center
+            ) { Text("↩️", fontSize = 20.sp) }
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(deviceName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextGold)
-                if (systemInfo != null) Text("${systemInfo.subsystems.size} تخصصاً فرعياً", fontSize = 11.sp, color = TextSecondary)
+                Text(deviceName, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextGold)
+                if (systemInfo != null) Text("${systemInfo.subsystems.size} تخصصاً", fontSize = 11.sp, color = TextSecondary)
+            }
+            if (isTab2) {
+                Box(
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                        .background(TextGold.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 4.dp)
+                ) { Text("12 قسماً", fontSize = 10.sp, color = TextGold) }
             }
         }
 
@@ -61,18 +85,30 @@ fun DeviceScreen(
 
         if (subjects.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("لا توجد مقررات مدرجة لهذا الجهاز بعد.", color = TextSecondary, fontSize = 16.sp)
+                Text("لا توجد مقررات مدرجة لهذا الجهاز بعد.", color = TextSecondary)
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
                 items(subjects) { subject ->
-                    GlassCard(
-                        modifier = Modifier.fillMaxWidth().height(80.dp).clickable { selectedSubject = subject }
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+                    val scale by animateFloatAsState(if (isPressed) 0.96f else 1f, spring())
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth().scale(scale)
+                            .clickable(interactionSource, null) { selectedSubject = subject },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0x15FFFFFF)),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isPressed) TextGold.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.06f)
+                        )
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize()) {
-                            Text("📖", fontSize = 28.sp)
+                        Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("📖", fontSize = 30.sp)
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(subject.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextGold, modifier = Modifier.weight(1f))
+                            Text(subject.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextGold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("◀", fontSize = 16.sp, color = TextSecondary)
                         }
                     }
                 }
@@ -84,34 +120,32 @@ fun DeviceScreen(
     selectedSubject?.let { subject ->
         AlertDialog(
             onDismissRequest = { selectedSubject = null },
-            title = { Text("معلومات المنهج الدراسي", color = TextGold, fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+            title = { Text("تفاصيل المادة", color = TextGold, fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("العنوان العلمي: ${subject.title}", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text("المادة: ${subject.title}", color = Color.White)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("الجهاز: $deviceName", color = TextSecondary, fontSize = 13.sp)
+                    Text("الجهاز: $deviceName", color = TextSecondary)
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("ملاحظة: يجري تحميل المستند الطبي من الخادم الآمن.", color = TextOrange, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Text(if (isTab2) "سيتم فتح المحتوى التعليمي الكامل." else "سيتم فتح الملف مباشرة.", color = TextOrange)
                 }
             },
             confirmButton = {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    if (onOpenCourseDetail != null) {
-                        TextButton(onClick = {
-                            val courseId = "${deviceName}-${subject.title}".replace(" ", "_")
-                            onOpenCourseDetail(courseId)
-                            selectedSubject = null
-                        }) { Text("عرض المحتوى التعليمي 📚", color = Secondary, fontWeight = FontWeight.Bold) }
-                    } else if (onOpenPdf != null) {
-                        TextButton(onClick = {
-                            onOpenPdf(subject.title, subject.directPdfPath)
-                            selectedSubject = null
-                        }) { Text("قراءة في التطبيق 📖", color = Secondary, fontWeight = FontWeight.Bold) }
-                    }
+                if (onOpenCourseDetail != null) {
+                    TextButton(onClick = {
+                        val courseId = "${deviceName}-${subject.title}".replace(" ", "_")
+                        onOpenCourseDetail(courseId)
+                        selectedSubject = null
+                    }) { Text("عرض المحتويات 📚", color = Secondary) }
+                } else if (onOpenPdf != null) {
+                    TextButton(onClick = {
+                        onOpenPdf(subject.title, subject.directPdfPath)
+                        selectedSubject = null
+                    }) { Text("فتح الملف 📄", color = Secondary) }
                 }
             },
-            dismissButton = { TextButton(onClick = { selectedSubject = null }) { Text("إغلاق", color = Color.White.copy(alpha = 0.6f)) } },
-            containerColor = PrimaryLight
+            dismissButton = { TextButton(onClick = { selectedSubject = null }) { Text("إغلاق") } },
+            containerColor = Color(0xFF0F1F33)
         )
     }
 }
