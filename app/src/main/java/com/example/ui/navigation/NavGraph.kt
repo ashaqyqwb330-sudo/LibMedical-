@@ -83,6 +83,10 @@ fun NavGraph(navController: NavHostController) {
                             val devName = params["deviceName"] ?: ""
                             navController.navigate("device/${params["chapterId"]}/${Uri.encode(devName)}")
                         }
+                        "device_subjects_12" -> {
+                            val devName = params["deviceName"] ?: ""
+                            navController.navigate("device_12/${params["chapterId"]}/${Uri.encode(devName)}")
+                        }
                         "subject_content" -> {
                             val devName = params["deviceName"] ?: ""
                             val subTitle = params["subjectTitle"] ?: ""
@@ -94,6 +98,51 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onNavigateToStudyPlan = {
                     navController.navigate("study_plan")
+                },
+                isTab2 = false,
+                onOpenPdfGeneral = { title, pdfPath ->
+                    navController.navigate("pdf_viewer/${Uri.encode(title)}/${Uri.encode(pdfPath)}")
+                }
+            )
+        }
+        composable(
+            "chapter_12/{chapterId}/{chapterName}",
+            arguments = listOf(
+                navArgument("chapterId") { type = NavType.StringType },
+                navArgument("chapterName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val chapterId = backStackEntry.arguments?.getString("chapterId") ?: ""
+            val chapterName = Uri.decode(backStackEntry.arguments?.getString("chapterName") ?: "")
+            ChapterScreen(
+                chapterName = chapterName,
+                chapterId = chapterId,
+                onBack = { navController.popBackStack() },
+                onNavigate = { screen, params ->
+                    when (screen) {
+                        "device_subjects" -> {
+                            val devName = params["deviceName"] ?: ""
+                            navController.navigate("device/${params["chapterId"]}/${Uri.encode(devName)}")
+                        }
+                        "device_subjects_12" -> {
+                            val devName = params["deviceName"] ?: ""
+                            navController.navigate("device_12/${params["chapterId"]}/${Uri.encode(devName)}")
+                        }
+                        "subject_content" -> {
+                            val devName = params["deviceName"] ?: ""
+                            val subTitle = params["subjectTitle"] ?: ""
+                            val index = params["subjectIndex"] ?: "0"
+                            val isGen = params["isGeneral"] ?: "false"
+                            navController.navigate("subject/${params["chapterId"]}/${Uri.encode(devName)}/${Uri.encode(subTitle)}/$index/$isGen")
+                        }
+                    }
+                },
+                onNavigateToStudyPlan = {
+                    navController.navigate("study_plan")
+                },
+                isTab2 = true,
+                onNavigateToCourseDetail = { courseId ->
+                    navController.navigate("course/${Uri.encode(courseId)}")
                 }
             )
         }
@@ -112,6 +161,24 @@ fun NavGraph(navController: NavHostController) {
                 onBack = { navController.popBackStack() },
                 onOpenPdf = { title, pdfPath ->
                     navController.navigate("pdf_viewer/${Uri.encode(title)}/${Uri.encode(pdfPath)}")
+                }
+            )
+        }
+        composable(
+            "device_12/{chapterId}/{deviceName}",
+            arguments = listOf(
+                navArgument("chapterId") { type = NavType.StringType },
+                navArgument("deviceName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val chapterId = backStackEntry.arguments?.getString("chapterId") ?: ""
+            val deviceName = Uri.decode(backStackEntry.arguments?.getString("deviceName") ?: "")
+            DeviceScreen(
+                chapterId = chapterId,
+                deviceName = deviceName,
+                onBack = { navController.popBackStack() },
+                onOpenCourseDetail = { courseId ->
+                    navController.navigate("course/${Uri.encode(courseId)}")
                 }
             )
         }

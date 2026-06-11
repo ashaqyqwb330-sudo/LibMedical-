@@ -27,11 +27,11 @@ fun DeviceScreen(
     chapterId: String,
     deviceName: String,
     onBack: () -> Unit,
-    onOpenPdf: (title: String, pdfPath: String) -> Unit
+    onOpenPdf: ((title: String, pdfPath: String) -> Unit)? = null,   // للتبويب الأول
+    onOpenCourseDetail: ((String) -> Unit)? = null                   // للتبويب الثاني
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
-    
     val subjects = remember(chapterId, deviceName) {
         repository.getDeviceSubjectsDirect(chapterId, deviceName)
     }
@@ -48,18 +48,12 @@ fun DeviceScreen(
             .background(Brush.verticalGradient(listOf(Color(0xFF020810), Primary, Color(0xFF0F1F33))))
             .padding(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("↩️", fontSize = 24.sp,
-                modifier = Modifier.clickable { onBack() }.padding(8.dp))
+        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("↩️", fontSize = 24.sp, modifier = Modifier.clickable { onBack() }.padding(8.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(deviceName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextGold)
-                if (systemInfo != null) {
-                    Text("${systemInfo.subsystems.size} تخصصاً فرعياً", fontSize = 11.sp, color = TextSecondary)
-                }
+                if (systemInfo != null) Text("${systemInfo.subsystems.size} تخصصاً فرعياً", fontSize = 11.sp, color = TextSecondary)
             }
         }
 
@@ -70,30 +64,15 @@ fun DeviceScreen(
                 Text("لا توجد مقررات مدرجة لهذا الجهاز بعد.", color = TextSecondary, fontSize = 16.sp)
             }
         } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
                 items(subjects) { subject ->
                     GlassCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp)
-                            .clickable { selectedSubject = subject }
+                        modifier = Modifier.fillMaxWidth().height(80.dp).clickable { selectedSubject = subject }
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize()) {
                             Text("📖", fontSize = 28.sp)
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                subject.title,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextGold,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Text(subject.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextGold, modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -101,6 +80,7 @@ fun DeviceScreen(
         }
     }
 
+    // حوار التفاصيل
     selectedSubject?.let { subject ->
         AlertDialog(
             onDismissRequest = { selectedSubject = null },
@@ -111,25 +91,26 @@ fun DeviceScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("الجهاز: $deviceName", color = TextSecondary, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("ملاحظة: يجري تحميل المستند الطبي من الخادم الآمن للقوات المسلحة لحفظ الأصول الفكرية.",
-                        color = TextOrange, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Text("ملاحظة: يجري تحميل المستند الطبي من الخادم الآمن.", color = TextOrange, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 }
             },
             confirmButton = {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = {
-                        onOpenPdf(subject.title, subject.directPdfPath)
-                        selectedSubject = null
-                    }) {
-                        Text("قراءة في التطبيق 📖", color = Secondary, fontWeight = FontWeight.Bold)
+                    if (onOpenCourseDetail != null) {
+                        TextButton(onClick = {
+                            val courseId = "${deviceName}-${subject.title}".replace(" ", "_")
+                            onOpenCourseDetail(courseId)
+                            selectedSubject = null
+                        }) { Text("عرض المحتوى التعليمي 📚", color = Secondary, fontWeight = FontWeight.Bold) }
+                    } else if (onOpenPdf != null) {
+                        TextButton(onClick = {
+                            onOpenPdf(subject.title, subject.directPdfPath)
+                            selectedSubject = null
+                        }) { Text("قراءة في التطبيق 📖", color = Secondary, fontWeight = FontWeight.Bold) }
                     }
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { selectedSubject = null }) {
-                    Text("إغلاق", color = Color.White.copy(alpha = 0.6f))
-                }
-            },
+            dismissButton = { TextButton(onClick = { selectedSubject = null }) { Text("إغلاق", color = Color.White.copy(alpha = 0.6f)) } },
             containerColor = PrimaryLight
         )
     }
