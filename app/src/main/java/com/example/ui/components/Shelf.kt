@@ -3,6 +3,7 @@ package com.example.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,22 +15,32 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.ui.theme.TextGold
 
 @Composable
 fun Shelf(
     modifier: Modifier = Modifier,
-    spacing: Dp = 12.dp,
-    shelfHeight: Dp = 220.dp, // ارتفاع الرف (أكبر من الكتب لإظهار الخشب)
-    showReflection: Boolean = true, // عرض انعكاس الكتب
+    spacing: Dp = 14.dp,
+    shelfHeight: Dp = 230.dp,
+    showSpotlight: Boolean = true,
     content: @Composable RowScope.() -> Unit
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "shelf_glow")
+
+    // توهج خافت متحرك على الرف
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shelf_glow_alpha"
+    )
+
+    Column(modifier = modifier.fillMaxWidth()) {
         // الكتب فوق الرف
         Row(
             modifier = Modifier
@@ -41,19 +52,36 @@ fun Shelf(
             content = content
         )
 
-        // الرف الخشبي
+        // سطح الرف الرئيسي (خشب فاخر)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(12.dp)
-                .clip(RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
+                .height(14.dp)
+                .clip(RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
                 .background(
                     Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFF2C1810), // بني داكن جداً
-                            Color(0xFF5C3A28), // بني متوسط
-                            Color(0xFF3E2218), // بني داكن
-                            Color(0xFF2C1810)  // بني داكن جداً
+                            Color(0xFF1A0E08),
+                            Color(0xFF3E2218),
+                            Color(0xFF5C3828),
+                            Color(0xFF3E2218),
+                            Color(0xFF1A0E08)
+                        )
+                    )
+                )
+        )
+
+        // خط ذهبي رفيع أعلى الرف
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            TextGold.copy(alpha = 0f),
+                            TextGold.copy(alpha = glowAlpha),
+                            TextGold.copy(alpha = 0f)
                         )
                     )
                 )
@@ -63,11 +91,12 @@ fun Shelf(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(3.dp)
-                .clip(RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
+                .height(4.dp)
+                .clip(RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
                 .background(
                     Brush.linearGradient(
                         colors = listOf(
+                            Color(0xFF0F0604),
                             Color(0xFF1A0E08),
                             Color(0xFF2C1810)
                         )

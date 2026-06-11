@@ -1,125 +1,96 @@
+// @builder:file app/src/main/java/com/example/ui/components/GlassCard.kt
 package com.example.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.ui.theme.Secondary
-import kotlinx.coroutines.launch
+import com.example.ui.theme.TextGold
 
 @Composable
 fun GlassCard(
-    modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    cornerRadius: Dp = 16.dp,
+    borderAlpha: Float = 0.15f,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     enablePersistentLaser: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val scope = rememberCoroutineScope()
-    val scanProgress = remember { Animatable(0f) }
-    var isScanning by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed = if (onClick != null) {
+        interactionSource.collectIsPressedAsState().value
+    } else false
 
-    // Persistent laser simulation
-    val persistentProgress = rememberInfiniteTransition(label = "laser_persistent")
-    val animLaserY by persistentProgress.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "laser_y"
+    // توهج عند الضغط
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 0.3f else 0.1f,
+        animationSpec = tween(300),
+        label = "glass_glow"
     )
 
-    val shape = RoundedCornerShape(16.dp)
+    val modifierWithClick = if (onClick != null) {
+        modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null
+        ) { onClick() }
+    } else modifier
 
-    val clickableModifier = if (onClick != null) {
-        Modifier
-            .clip(shape)
-            .clickable {
-                if (!isScanning) {
-                    isScanning = true
-                    scope.launch {
-                        scanProgress.snapTo(0f)
-                        scanProgress.animateTo(
-                            targetValue = 1f,
-                            animationSpec = tween(durationMillis = 800, easing = LinearEasing)
+    Box(
+        modifier = modifierWithClick
+            .clip(RoundedCornerShape(cornerRadius))
+            .border(
+                1.dp,
+                TextGold.copy(alpha = if (isPressed) borderAlpha * 2 else borderAlpha),
+                RoundedCornerShape(cornerRadius)
+            )
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.08f),
+                        Color.White.copy(alpha = 0.03f),
+                        Color.White.copy(alpha = 0.06f)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(400f, 800f)
+                )
+            )
+    ) {
+        // تأثير انعكاس زجاجي (خط أبيض رفيع في الأعلى)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .align(Alignment.TopCenter)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0f),
+                            Color.White.copy(alpha = glowAlpha * 2),
+                            Color.White.copy(alpha = 0f)
                         )
-                        isScanning = false
-                    }
-                }
-                onClick()
-            }
-    } else Modifier
-
-    Column(
-        modifier = modifier
-            .shadow(8.dp, shape)
-            .background(Color(0x20FFFFFF), shape)
-            .border(1.5.dp, Secondary, shape)
-            .then(clickableModifier)
-            .drawWithContent {
-                drawContent()
-                val goldColor = Color(0xFFD4AF37)
-                
-                // 1. Interactive Laser Scan
-                if (isScanning) {
-                    val y = size.height * scanProgress.value
-                    val trailHeight = 50.dp.toPx()
-                    if (y > 0) {
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, goldColor.copy(alpha = 0.25f), goldColor.copy(alpha = 0.02f)),
-                                startY = (y - trailHeight).coerceAtLeast(0f),
-                                endY = y
-                            ),
-                            topLeft = Offset(0f, (y - trailHeight).coerceAtLeast(0f)),
-                            size = androidx.compose.ui.geometry.Size(size.width, trailHeight.coerceAtMost(y))
-                        )
-                    }
-                    drawLine(
-                        color = goldColor,
-                        start = Offset(0f, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = 2.dp.toPx()
                     )
-                }
+                )
+        )
 
-                // 2. Persistent scan sweep (low opacity hologram overlay style)
-                if (enablePersistentLaser) {
-                    val y = size.height * animLaserY
-                    val trailHeight = 35.dp.toPx()
-                    if (y > 0) {
-                        drawRect(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, goldColor.copy(alpha = 0.1f), Color.Transparent),
-                                startY = (y - trailHeight).coerceAtLeast(0f),
-                                endY = y
-                            ),
-                            topLeft = Offset(0f, (y - trailHeight).coerceAtLeast(0f)),
-                            size = androidx.compose.ui.geometry.Size(size.width, trailHeight.coerceAtMost(y))
-                        )
-                    }
-                    drawLine(
-                        color = goldColor.copy(alpha = 0.35f),
-                        start = Offset(0f, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = 1.2.dp.toPx()
-                    )
-                }
-            }
-            .padding(16.dp),
-        content = content
-    )
+        Column(
+            modifier = Modifier.padding(contentPadding),
+            content = content
+        )
+    }
 }
-
+// @builder:end
