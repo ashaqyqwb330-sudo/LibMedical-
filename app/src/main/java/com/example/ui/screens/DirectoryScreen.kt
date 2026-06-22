@@ -568,6 +568,8 @@ fun DirectoryScreen(
                                             val (_, generals, devices) = repository.getBooksInChapter(chapter.id)
                                             if (generals.isEmpty() && devices.isEmpty()) {
                                                 onNavigateToBooksTab2(chapter.id)
+                                            } else if (devices.isNotEmpty()) {
+                                                onNavigateToChapterTab2(chapter.id, chapter.name)
                                             } else {
                                                 onNavigateToGeneralsTab2(chapter.id)
                                             }
