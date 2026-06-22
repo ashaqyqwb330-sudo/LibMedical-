@@ -61,7 +61,7 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate("chapter_tab2/$chapterId/${Uri.encode(chapterName)}")
                 },
                 onNavigateToCourseDetail = { courseId ->
-                    navController.navigate("course/${Uri.encode(courseId)}")
+                    navController.navigate("content_hub/${Uri.encode(courseId)}")
                 },
                 onNavigateToCourseDescriptions = { navController.navigate("course_descriptions") }
             )
@@ -148,7 +148,7 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate("device_tab2/$cid/${Uri.encode(device)}")
                 },
                 onNavigateToCourseDetail = { courseId ->
-                    navController.navigate("course/${Uri.encode(courseId)}")
+                    navController.navigate("content_hub/${Uri.encode(courseId)}")
                 }
             )
         }
@@ -171,7 +171,7 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate("device_tab2/$cid/${Uri.encode(device)}")
                 },
                 onNavigateToCourseDetail = { courseId ->
-                    navController.navigate("course/${Uri.encode(courseId)}")
+                    navController.navigate("content_hub/${Uri.encode(courseId)}")
                 }
             )
         }
@@ -192,7 +192,7 @@ fun NavGraph(navController: NavHostController) {
                 dataType = Tab2DataType.DEVICE_SUBJECTS,
                 onBack = { navController.popBackStack() },
                 onItemConfirmed = { courseId ->
-                    navController.navigate("course/${Uri.encode(courseId)}")
+                    navController.navigate("content_hub/${Uri.encode(courseId)}")
                 }
             )
         }
@@ -213,7 +213,7 @@ fun NavGraph(navController: NavHostController) {
                 dataType = Tab2DataType.DEVICE_SUBJECTS,
                 onBack = { navController.popBackStack() },
                 onItemConfirmed = { courseId ->
-                    navController.navigate("course/${Uri.encode(courseId)}")
+                    navController.navigate("content_hub/${Uri.encode(courseId)}")
                 }
             )
         }
@@ -229,7 +229,7 @@ fun NavGraph(navController: NavHostController) {
                 dataType = Tab2DataType.GENERAL_SUBJECTS,
                 onBack = { navController.popBackStack() },
                 onItemConfirmed = { courseId ->
-                    navController.navigate("course/${Uri.encode(courseId)}")
+                    navController.navigate("content_hub/${Uri.encode(courseId)}")
                 }
             )
         }
@@ -245,18 +245,18 @@ fun NavGraph(navController: NavHostController) {
                 dataType = Tab2DataType.BOOKS,
                 onBack = { navController.popBackStack() },
                 onItemConfirmed = { courseId ->
-                    navController.navigate("course/${Uri.encode(courseId)}")
+                    navController.navigate("content_hub/${Uri.encode(courseId)}")
                 }
             )
         }
 
-        // شاشة المحتويات الـ12 (للتبويب الثاني فقط)
+        // شاشة المحتويات الـ12 الجديدة والمحسنة كلياً
         composable(
-            "course/{courseId}",
+            "content_hub/{courseId}",
             arguments = listOf(navArgument("courseId") { type = NavType.StringType })
         ) { backStackEntry ->
             val courseId = Uri.decode(backStackEntry.arguments?.getString("courseId") ?: "")
-            CourseDetailScreen(
+            CourseContentHubScreen(
                 courseId = courseId,
                 onBack = { navController.popBackStack() },
                 onContentClick = { index ->
@@ -313,7 +313,7 @@ fun NavGraph(navController: NavHostController) {
             SemesterScreen(
                 semesterId = semesterId,
                 onBack = { navController.popBackStack() },
-                onCourseClick = { courseId -> navController.navigate("course/${Uri.encode(courseId)}") }
+                onCourseClick = { courseId -> navController.navigate("content_hub/${Uri.encode(courseId)}") }
             )
         }
 
