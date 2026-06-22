@@ -14,25 +14,58 @@ import java.io.IOException
 
 class DataProvider(private val context: Context) {
 
+    private val ENHANCED_LIBRARY_PATH = "/storage/4403-B0CA/Projects/MidApp_Library/"
+
     val activeBaseDir: File? by lazy {
-        val candidates = listOfNotNull(
-            context.getExternalFilesDir(null)?.let { File(it, "data") },
-            context.getExternalFilesDir(null),
-            File(context.filesDir, "data"),
-            context.filesDir,
-            File("/storage/emulated/0/Android/data/${context.packageName}/files/data"),
-            File("/storage/emulated/0/Android/data/${context.packageName}/files"),
-            File("/storage/emulated/0/Android/data/com.aistudio.militarymedicallibrary.bchskv/files/data"),
-            File("/storage/emulated/0/Android/data/com.aistudio.militarymedicallibrary.bchskv/files")
-        )
-        candidates.firstOrNull { dir ->
-            dir != null && (File(dir, "app_assets_map.json").exists() || File(dir, "01-الأساسيات").exists())
+        val enhancedDir = File(ENHANCED_LIBRARY_PATH)
+        if (enhancedDir.exists() && File(enhancedDir, "app_assets_map_v3.json").exists()) {
+            enhancedDir // استخدام المكتبة المتقدمة
+        } else {
+            val candidates = listOfNotNull(
+                context.getExternalFilesDir(null)?.let { File(it, "data") },
+                context.getExternalFilesDir(null),
+                File(context.filesDir, "data"),
+                context.filesDir,
+                File("/storage/emulated/0/Android/data/${context.packageName}/files/data"),
+                File("/storage/emulated/0/Android/data/${context.packageName}/files"),
+                File("/storage/emulated/0/Android/data/com.aistudio.militarymedicallibrary.bchskv/files/data"),
+                File("/storage/emulated/0/Android/data/com.aistudio.militarymedicallibrary.bchskv/files")
+            )
+            candidates.firstOrNull { dir ->
+                dir != null && (File(dir, "app_assets_map.json").exists() || File(dir, "01-الأساسيات").exists())
+            }
         }
     }
 
     val allBooks: List<BookEntry> by lazy {
         val baseDir = activeBaseDir
-        if (baseDir != null && File(baseDir, "app_assets_map.json").exists()) {
+        val enhancedDir = File(ENHANCED_LIBRARY_PATH)
+        if (enhancedDir.exists() && File(enhancedDir, "app_assets_map_v3.json").exists()) {
+            val jsonFile = File(enhancedDir, "app_assets_map_v3.json")
+            try {
+                val json = jsonFile.readText()
+                val mapType = object : TypeToken<Map<String, Any>>() {}.type
+                val map = Gson().fromJson<Map<String, Any>>(json, mapType)
+                val booksJson = Gson().toJson(map["books"])
+                val listType = object : TypeToken<List<BookEntry>>() {}.type
+                val books = Gson().fromJson<List<BookEntry>>(booksJson, listType)
+                books.map { book ->
+                    book.copy(
+                        file = book.file.replace("\\", "/"),
+                        cover_path = book.cover_path.replace("\\", "/")
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                loadFallbackBooks(baseDir)
+            }
+        } else {
+            loadFallbackBooks(baseDir)
+        }
+    }
+
+    private fun loadFallbackBooks(baseDir: File?): List<BookEntry> {
+        return if (baseDir != null && File(baseDir, "app_assets_map.json").exists()) {
             val jsonFile = File(baseDir, "app_assets_map.json")
             try {
                 val json = jsonFile.readText()
@@ -80,6 +113,7 @@ class DataProvider(private val context: Context) {
     fun findFileOnDevice(filePath: String): File? {
         val normalized = filePath.replace("\\", "/").trim().removePrefix("/")
         val bases = listOfNotNull(
+            activeBaseDir,
             context.getExternalFilesDir(null),
             context.getExternalFilesDir(null)?.let { File(it, "data") },
             context.filesDir,
