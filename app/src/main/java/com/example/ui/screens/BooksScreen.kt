@@ -34,27 +34,12 @@ import com.example.ui.theme.*
 
 @Composable
 fun BooksScreen(
-    chapterName: String,
+    chapterId: String,
     onBack: () -> Unit,
     onNavigateToPdf: (BookEntry) -> Unit
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
-    
-    // استخراج رقم الفصل بشكل آمن مع معالجة الأخطاء
-    val chapterId = remember(chapterName) {
-        try {
-            val cleaned = chapterName
-                .split(" - ")
-                .firstOrNull()
-                ?.replace("الفصل ", "")
-                ?.trim()
-                ?: return@remember "class0"
-            "class$cleaned"
-        } catch (e: Exception) {
-            "class0"
-        }
-    }
     
     // تحميل الكتب مع معالجة الأخطاء
     val books = remember(chapterId) {
@@ -63,6 +48,11 @@ fun BooksScreen(
         } catch (e: Exception) {
             emptyList()
         }
+    }
+
+    // اسم الفصل للعرض
+    val chapterName = remember(chapterId) {
+        repository.getChapters().firstOrNull { it.id == chapterId }?.name ?: "الفصل ${chapterId.removePrefix("class")}"
     }
     
     var selectedBook by remember { mutableStateOf<BookEntry?>(null) }

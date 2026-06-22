@@ -23,7 +23,10 @@ fun NavGraph(navController: NavHostController) {
             DiplomaScreen(
                 onNavigate = { screen, params ->
                     when (screen) {
-                        "books" -> navController.navigate("books/${Uri.encode(params["chapterName"] ?: "")}")
+                        "books" -> {
+                            val target = params["chapterId"] ?: params["chapterName"] ?: "class1"
+                            navController.navigate("books/${Uri.encode(target)}")
+                        }
                         "chapter_books" -> navController.navigate("chapter/${params["chapterId"]}/${Uri.encode(params["chapterName"] ?: "")}")
                         "pdf_viewer" -> navController.navigate("pdf_viewer/${Uri.encode(params["title"] ?: "")}/${Uri.encode(params["file"] ?: "")}")
                     }
@@ -42,16 +45,37 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateToChapter = { chapterId, chapterName ->
                     navController.navigate("chapter/$chapterId/${Uri.encode(chapterName)}")
                 },
-                onNavigateToBooks = { chapterName ->
-                    navController.navigate("books/${Uri.encode(chapterName)}")
+                onNavigateToBooks = { chapterId ->
+                    navController.navigate("books/${Uri.encode(chapterId)}")
                 },
                 onNavigateToChapter12 = { chapterId, chapterName ->
-                    navController.navigate("chapter_12/$chapterId/${Uri.encode(chapterName)}")
+                    navController.navigate("chapter_tab2/$chapterId/${Uri.encode(chapterName)}")
+                },
+                onNavigateToBooksTab2 = { chapterId ->
+                    navController.navigate("books_tab2/$chapterId")
+                },
+                onNavigateToChapterTab2 = { chapterId, chapterName ->
+                    navController.navigate("chapter_tab2/$chapterId/${Uri.encode(chapterName)}")
                 },
                 onNavigateToCourseDetail = { courseId ->
                     navController.navigate("course/${Uri.encode(courseId)}")
                 },
                 onNavigateToCourseDescriptions = { navController.navigate("course_descriptions") }
+            )
+        }
+
+        // شاشة الكتب المباشرة للفصل الدراسي
+        composable(
+            "books/{chapterId}",
+            arguments = listOf(navArgument("chapterId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val chapterId = backStackEntry.arguments?.getString("chapterId") ?: ""
+            BooksScreen(
+                chapterId = chapterId,
+                onBack = { navController.popBackStack() },
+                onNavigateToPdf = { book ->
+                    navController.navigate("pdf_viewer/${Uri.encode(book.title)}/${Uri.encode(book.file)}")
+                }
             )
         }
 
@@ -103,7 +127,7 @@ fun NavGraph(navController: NavHostController) {
         }
 
         // ========== التبويب الثاني: الأقسام التعليمية ==========
-        // فصل (تبويب ثاني) ← يفتح المحتويات الـ12
+        // فصل (تبويب ثاني) (متوافق مع المسار القديم)
         composable(
             "chapter_12/{chapterId}/{chapterName}",
             arguments = listOf(
@@ -113,23 +137,43 @@ fun NavGraph(navController: NavHostController) {
         ) { backStackEntry ->
             val chapterId = backStackEntry.arguments?.getString("chapterId") ?: ""
             val chapterName = Uri.decode(backStackEntry.arguments?.getString("chapterName") ?: "")
-            ChapterScreen(
-                chapterName = chapterName,
+            ChapterTab2Screen(
                 chapterId = chapterId,
+                chapterName = chapterName,
                 onBack = { navController.popBackStack() },
-                onNavigate = { screen, params ->
-                    when (screen) {
-                        "device_subjects_12" -> navController.navigate("device_12/$chapterId/${Uri.encode(params["deviceName"] ?: "")}")
-                    }
+                onNavigateToDeviceTab2 = { cid, device ->
+                    navController.navigate("device_tab2/$cid/${Uri.encode(device)}")
                 },
-                isTab2 = true,
                 onNavigateToCourseDetail = { courseId ->
                     navController.navigate("course/${Uri.encode(courseId)}")
                 }
             )
         }
 
-        // جهاز (تبويب ثاني) ← يفتح المحتويات الـ12
+        // فصل (تبويب ثاني) (المسار الجديد)
+        composable(
+            "chapter_tab2/{chapterId}/{chapterName}",
+            arguments = listOf(
+                navArgument("chapterId") { type = NavType.StringType },
+                navArgument("chapterName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val chapterId = backStackEntry.arguments?.getString("chapterId") ?: ""
+            val chapterName = Uri.decode(backStackEntry.arguments?.getString("chapterName") ?: "")
+            ChapterTab2Screen(
+                chapterId = chapterId,
+                chapterName = chapterName,
+                onBack = { navController.popBackStack() },
+                onNavigateToDeviceTab2 = { cid, device ->
+                    navController.navigate("device_tab2/$cid/${Uri.encode(device)}")
+                },
+                onNavigateToCourseDetail = { courseId ->
+                    navController.navigate("course/${Uri.encode(courseId)}")
+                }
+            )
+        }
+
+        // جهاز (تبويب ثاني) (متوافق مع المسار القديم)
         composable(
             "device_12/{chapterId}/{deviceName}",
             arguments = listOf(
@@ -139,14 +183,51 @@ fun NavGraph(navController: NavHostController) {
         ) { backStackEntry ->
             val chapterId = backStackEntry.arguments?.getString("chapterId") ?: ""
             val deviceName = Uri.decode(backStackEntry.arguments?.getString("deviceName") ?: "")
-            DeviceScreen(
+            UnifiedTab2Screen(
                 chapterId = chapterId,
                 deviceName = deviceName,
+                dataType = Tab2DataType.DEVICE_SUBJECTS,
                 onBack = { navController.popBackStack() },
-                onOpenCourseDetail = { courseId ->
+                onItemConfirmed = { courseId ->
                     navController.navigate("course/${Uri.encode(courseId)}")
-                },
-                isTab2 = true  // تمييز بصري
+                }
+            )
+        }
+
+        // جهاز (تبويب ثاني) (المسار الجديد)
+        composable(
+            "device_tab2/{chapterId}/{deviceName}",
+            arguments = listOf(
+                navArgument("chapterId") { type = NavType.StringType },
+                navArgument("deviceName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val chapterId = backStackEntry.arguments?.getString("chapterId") ?: ""
+            val deviceName = Uri.decode(backStackEntry.arguments?.getString("deviceName") ?: "")
+            UnifiedTab2Screen(
+                chapterId = chapterId,
+                deviceName = deviceName,
+                dataType = Tab2DataType.DEVICE_SUBJECTS,
+                onBack = { navController.popBackStack() },
+                onItemConfirmed = { courseId ->
+                    navController.navigate("course/${Uri.encode(courseId)}")
+                }
+            )
+        }
+
+        // كتب direct (تبويب ثاني) (المسار الجديد)
+        composable(
+            "books_tab2/{chapterId}",
+            arguments = listOf(navArgument("chapterId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val chapterId = backStackEntry.arguments?.getString("chapterId") ?: ""
+            UnifiedTab2Screen(
+                chapterId = chapterId,
+                dataType = Tab2DataType.BOOKS,
+                onBack = { navController.popBackStack() },
+                onItemConfirmed = { courseId ->
+                    navController.navigate("course/${Uri.encode(courseId)}")
+                }
             )
         }
 

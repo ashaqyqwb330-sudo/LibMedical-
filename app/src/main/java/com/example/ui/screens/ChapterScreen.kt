@@ -125,16 +125,39 @@ fun ChapterScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         if (isEmpty) {
-            // حالة فارغة
-            Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(modifier = Modifier.size(80.dp).clip(RoundedCornerShape(20.dp)).background(TextGold.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
-                        Text("📭", fontSize = 36.sp)
+            if (isTab2) {
+                // في التبويب الثاني: عرض الكتب المباشرة بدلاً من "لا توجد مواد"
+                BooksScreen(
+                    chapterId = chapterId,
+                    onBack = onBack,
+                    onNavigateToPdf = { book ->
+                        onOpenPdfGeneral?.invoke(book.title, book.file) 
+                            ?: onNavigateToCourseDetail?.invoke(book.title.replace(" ", "_"))
                     }
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Text("لا توجد مواد أو أجهزة", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextGold)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("هذا الفصل الدراسي لا يحتوي حالياً على أي مواد عامة أو أجهزة طبية. سيتم إضافتها قريباً.", fontSize = 14.sp, color = TextSecondary, textAlign = TextAlign.Center, lineHeight = 22.sp)
+                )
+            } else {
+                // في التبويب الأول: عرض الحالة الفارغة الجميلة
+                Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = TextGold.copy(alpha = 0.06f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, TextGold.copy(alpha = 0.2f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("📭", fontSize = 42.sp)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("لا توجد مواد أو أجهزة", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextGold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "هذا الفصل الدراسي لا يحتوي حالياً على أي مواد عامة أو أجهزة طبية.",
+                                fontSize = 14.sp, color = TextSecondary, textAlign = TextAlign.Center, lineHeight = 22.sp
+                            )
+                        }
+                    }
                 }
             }
         } else {

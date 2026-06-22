@@ -72,6 +72,8 @@ fun DirectoryScreen(
     onNavigateToChapter: (String, String) -> Unit,
     onNavigateToBooks: (String) -> Unit,
     onNavigateToChapter12: (String, String) -> Unit = { _, _ -> },
+    onNavigateToBooksTab2: (String) -> Unit = {},
+    onNavigateToChapterTab2: (String, String) -> Unit = { _, _ -> },
     onNavigateToCourseDetail: (String) -> Unit = {},
     onNavigateToCourseDescriptions: () -> Unit = {}
 ) {
@@ -451,7 +453,7 @@ fun DirectoryScreen(
                                         ) {
                                             val (_, generals, devices) = repository.getBooksInChapter(chapter.id)
                                             if (generals.isEmpty() && devices.isEmpty())
-                                                onNavigateToBooks(chapter.name)
+                                                onNavigateToBooks(chapter.id)
                                             else onNavigateToChapter(chapter.id, chapter.name)
                                         },
                                     shape = RoundedCornerShape(16.dp),
@@ -561,7 +563,14 @@ fun DirectoryScreen(
                                         .clickable(
                                             interactionSource = interactionSource,
                                             indication = null
-                                        ) { onNavigateToChapter12(chapter.id, chapter.name) },
+                                        ) {
+                                            val (_, generals, devices) = repository.getBooksInChapter(chapter.id)
+                                            if (generals.isEmpty() && devices.isEmpty()) {
+                                                onNavigateToBooksTab2(chapter.id)
+                                            } else {
+                                                onNavigateToChapterTab2(chapter.id, chapter.name)
+                                            }
+                                        },
                                     shape = RoundedCornerShape(16.dp),
                                     colors = CardDefaults.cardColors(containerColor = Color(0x15FFFFFF)),
                                     border = androidx.compose.foundation.BorderStroke(
