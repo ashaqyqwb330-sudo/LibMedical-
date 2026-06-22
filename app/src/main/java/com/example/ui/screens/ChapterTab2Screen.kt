@@ -33,6 +33,7 @@ import com.example.data.DataProvider
 import com.example.data.DirectSubjectItem
 import com.example.data.StudyPlanProvider
 import com.example.ui.components.Book3DCard
+import com.example.ui.components.MaterialDialog
 import com.example.ui.components.Shelf
 import com.example.ui.components.StaggeredEntrance
 import com.example.ui.theme.*
@@ -47,6 +48,8 @@ fun ChapterTab2Screen(
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
+    
+    var selectedGeneralSubject by remember { mutableStateOf<DirectSubjectItem?>(null) }
     
     val generalsDirect = remember(chapterId) {
         try {
@@ -126,10 +129,11 @@ fun ChapterTab2Screen(
 
         if (isEmpty) {
             // توجيه ذكي للكتب في حالة الفصول الدراسية العادية إذا استُدعيت بطريقة ما
-            BooksTab2Screen(
+            UnifiedTab2Screen(
                 chapterId = chapterId,
+                dataType = Tab2DataType.BOOKS,
                 onBack = onBack,
-                onNavigateToCourseDetail = onNavigateToCourseDetail
+                onItemConfirmed = onNavigateToCourseDetail
             )
         } else {
             Column(modifier = Modifier.weight(1f)) {
@@ -152,7 +156,7 @@ fun ChapterTab2Screen(
                                             coverPath = null,
                                             activeBaseDir = null,
                                             onClick = {
-                                                onNavigateToCourseDetail(item.title.replace(" ", "_"))
+                                                selectedGeneralSubject = item
                                             }
                                         )
                                     }
@@ -189,5 +193,19 @@ fun ChapterTab2Screen(
                 }
             }
         }
+    }
+
+    selectedGeneralSubject?.let { item ->
+        MaterialDialog(
+            title = "تفاصيل المقرر الدراسي الـ 12",
+            message = "المقرر: ${item.title}\n\nيتضمن هذا القسم الأقسام التعليمية الـ 12 المشتملة على العروض التقديمية والملخصات ومقاطع الفيديو بنظم المحاكاة الطبية العسكرية.",
+            confirmText = "عرض المحتويات 📚",
+            onDismiss = { selectedGeneralSubject = null },
+            onConfirm = {
+                val courseId = item.title.replace(" ", "_").trim()
+                onNavigateToCourseDetail(courseId)
+                selectedGeneralSubject = null
+            }
+        )
     }
 }

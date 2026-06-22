@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.DataProvider
+import com.example.data.DirectSubjectItem
 import com.example.ui.components.Book3DCard
 import com.example.ui.components.MaterialDialog
 import com.example.ui.components.Shelf

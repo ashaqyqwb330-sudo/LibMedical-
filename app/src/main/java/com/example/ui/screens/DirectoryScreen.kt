@@ -73,6 +73,7 @@ fun DirectoryScreen(
     onNavigateToBooks: (String) -> Unit,
     onNavigateToChapter12: (String, String) -> Unit = { _, _ -> },
     onNavigateToBooksTab2: (String) -> Unit = {},
+    onNavigateToGeneralsTab2: (String) -> Unit = {},
     onNavigateToChapterTab2: (String, String) -> Unit = { _, _ -> },
     onNavigateToCourseDetail: (String) -> Unit = {},
     onNavigateToCourseDescriptions: () -> Unit = {}
@@ -568,7 +569,7 @@ fun DirectoryScreen(
                                             if (generals.isEmpty() && devices.isEmpty()) {
                                                 onNavigateToBooksTab2(chapter.id)
                                             } else {
-                                                onNavigateToChapterTab2(chapter.id, chapter.name)
+                                                onNavigateToGeneralsTab2(chapter.id)
                                             }
                                         },
                                     shape = RoundedCornerShape(16.dp),

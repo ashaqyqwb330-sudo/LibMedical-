@@ -54,6 +54,9 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateToBooksTab2 = { chapterId ->
                     navController.navigate("books_tab2/$chapterId")
                 },
+                onNavigateToGeneralsTab2 = { chapterId ->
+                    navController.navigate("generals_tab2/$chapterId")
+                },
                 onNavigateToChapterTab2 = { chapterId, chapterName ->
                     navController.navigate("chapter_tab2/$chapterId/${Uri.encode(chapterName)}")
                 },
@@ -208,6 +211,22 @@ fun NavGraph(navController: NavHostController) {
                 chapterId = chapterId,
                 deviceName = deviceName,
                 dataType = Tab2DataType.DEVICE_SUBJECTS,
+                onBack = { navController.popBackStack() },
+                onItemConfirmed = { courseId ->
+                    navController.navigate("course/${Uri.encode(courseId)}")
+                }
+            )
+        }
+
+        // مسار موحد للمواد العامة في التبويب الثاني
+        composable(
+            "generals_tab2/{chapterId}",
+            arguments = listOf(navArgument("chapterId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val chapterId = backStackEntry.arguments?.getString("chapterId") ?: ""
+            UnifiedTab2Screen(
+                chapterId = chapterId,
+                dataType = Tab2DataType.GENERAL_SUBJECTS,
                 onBack = { navController.popBackStack() },
                 onItemConfirmed = { courseId ->
                     navController.navigate("course/${Uri.encode(courseId)}")
