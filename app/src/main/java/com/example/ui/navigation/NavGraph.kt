@@ -260,8 +260,31 @@ fun NavGraph(navController: NavHostController) {
                 courseId = courseId,
                 onBack = { navController.popBackStack() },
                 onContentClick = { index ->
-                    navController.navigate("course_content/${Uri.encode(courseId)}/$index")
+                    if (index == 0) {
+                        navController.navigate("lecture_viewer/${Uri.encode(courseId)}/THEORY")
+                    } else if (index == 1) {
+                        navController.navigate("lecture_viewer/${Uri.encode(courseId)}/PRACTICAL")
+                    } else {
+                        navController.navigate("course_content/${Uri.encode(courseId)}/$index")
+                    }
                 }
+            )
+        }
+
+        // شاشة عرض المحاضرات النظرية والعملية الفخمة كلياً
+        composable(
+            "lecture_viewer/{courseId}/{contentType}",
+            arguments = listOf(
+                navArgument("courseId") { type = NavType.StringType },
+                navArgument("contentType") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val courseId = Uri.decode(backStackEntry.arguments?.getString("courseId") ?: "")
+            val contentType = backStackEntry.arguments?.getString("contentType") ?: "THEORY"
+            LectureViewerScreen(
+                courseId = courseId,
+                contentType = contentType,
+                onBack = { navController.popBackStack() }
             )
         }
 

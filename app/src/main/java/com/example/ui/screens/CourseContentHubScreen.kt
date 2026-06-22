@@ -19,11 +19,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -507,11 +508,8 @@ fun ContentHubCard(
 
     Box(
         modifier = Modifier
-            .graphicsLayer {
-                scaleX = scale.value
-                scaleY = scale.value
-                this.alpha = alpha.value
-            }
+            .scale(scale.value)
+            .alpha(alpha.value)
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0x180B1A2A))
             .border(
