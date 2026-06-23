@@ -15,11 +15,63 @@ import java.io.IOException
 class DataProvider(private val context: Context) {
 
     private val ENHANCED_LIBRARY_PATH = "/storage/4403-B0CA/Projects/MidApp_Library/"
+    private val PREFS_NAME = "library_source_prefs"
+    private val KEY_URI = "enhanced_library_uri"
 
-    val activeBaseDir: File? by lazy {
+    fun getSavedLibraryUri(): String? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_URI, null)
+    }
+
+    fun saveLibraryUri(uri: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_URI, uri).apply()
+    }
+
+    fun clearLibraryUri() {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().remove(KEY_URI).apply()
+    }
+
+    fun isEnhancedModeActive(): Boolean {
+        val savedUri = getSavedLibraryUri()
+        if (savedUri != null) {
+            try {
+                val treeUri = Uri.parse(savedUri)
+                val treeFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, treeUri)
+                if (treeFile != null && treeFile.exists()) {
+                    val mapFile = findFileInDocumentTree(treeUri, "app_assets_map_v3.json")
+                    if (mapFile != null && mapFile.exists()) {
+                        return true
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        
+        val enhancedDir = File(ENHANCED_LIBRARY_PATH)
+        return enhancedDir.exists() && File(enhancedDir, "app_assets_map_v3.json").exists()
+    }
+
+    fun findFileInDocumentTree(treeUri: Uri, relativePath: String): androidx.documentfile.provider.DocumentFile? {
+        var current: androidx.documentfile.provider.DocumentFile? = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, treeUri) ?: return null
+        val segments = relativePath.replace("\\", "/").split("/").filter { it.isNotEmpty() }
+        for (segment in segments) {
+            if (current == null) return null
+            val children = current.listFiles()
+            val match = children.firstOrNull { child ->
+                normalizeArabic(child.name ?: "").equals(normalizeArabic(segment), ignoreCase = true)
+            }
+            current = match ?: return null
+        }
+        return current
+    }
+
+    val activeBaseDir: File? get() {
         val enhancedDir = File(ENHANCED_LIBRARY_PATH)
         if (enhancedDir.exists() && File(enhancedDir, "app_assets_map_v3.json").exists()) {
-            enhancedDir // استخدام المكتبة المتقدمة
+            return enhancedDir // استخدام المكتبة المتقدمة
         } else {
             val candidates = listOfNotNull(
                 context.getExternalFilesDir(null)?.let { File(it, "data") },
@@ -31,13 +83,39 @@ class DataProvider(private val context: Context) {
                 File("/storage/emulated/0/Android/data/com.aistudio.militarymedicallibrary.bchskv/files/data"),
                 File("/storage/emulated/0/Android/data/com.aistudio.militarymedicallibrary.bchskv/files")
             )
-            candidates.firstOrNull { dir ->
+            return candidates.firstOrNull { dir ->
                 dir != null && (File(dir, "app_assets_map.json").exists() || File(dir, "01-الأساسيات").exists())
             }
         }
     }
 
-    val allBooks: List<BookEntry> by lazy {
+    val allBooks: List<BookEntry> get() {
+        val savedUri = getSavedLibraryUri()
+        if (savedUri != null) {
+            try {
+                val treeUri = Uri.parse(savedUri)
+                val docFile = findFileInDocumentTree(treeUri, "app_assets_map_v3.json")
+                if (docFile != null && docFile.exists() && docFile.isFile) {
+                    context.contentResolver.openInputStream(docFile.uri)?.use { inputStream ->
+                        val json = inputStream.bufferedReader().use { it.readText() }
+                        val mapType = object : TypeToken<Map<String, Any>>() {}.type
+                        val map = Gson().fromJson<Map<String, Any>>(json, mapType)
+                        val booksJson = Gson().toJson(map["books"])
+                        val listType = object : TypeToken<List<BookEntry>>() {}.type
+                        val books = Gson().fromJson<List<BookEntry>>(booksJson, listType)
+                        return books.map { book ->
+                            book.copy(
+                                file = book.file.replace("\\", "/"),
+                                cover_path = book.cover_path.replace("\\", "/")
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
         val baseDir = activeBaseDir
         val enhancedDir = File(ENHANCED_LIBRARY_PATH)
         if (enhancedDir.exists() && File(enhancedDir, "app_assets_map_v3.json").exists()) {
@@ -49,7 +127,7 @@ class DataProvider(private val context: Context) {
                 val booksJson = Gson().toJson(map["books"])
                 val listType = object : TypeToken<List<BookEntry>>() {}.type
                 val books = Gson().fromJson<List<BookEntry>>(booksJson, listType)
-                books.map { book ->
+                return books.map { book ->
                     book.copy(
                         file = book.file.replace("\\", "/"),
                         cover_path = book.cover_path.replace("\\", "/")
@@ -57,10 +135,10 @@ class DataProvider(private val context: Context) {
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                loadFallbackBooks(baseDir)
+                return loadFallbackBooks(baseDir)
             }
         } else {
-            loadFallbackBooks(baseDir)
+            return loadFallbackBooks(baseDir)
         }
     }
 
@@ -74,7 +152,7 @@ class DataProvider(private val context: Context) {
                 val booksJson = Gson().toJson(map["books"])
                 val listType = object : TypeToken<List<BookEntry>>() {}.type
                 val books = Gson().fromJson<List<BookEntry>>(booksJson, listType)
-                books.map { book ->
+                return books.map { book ->
                     book.copy(
                         file = book.file.replace("\\", "/"),
                         cover_path = book.cover_path.replace("\\", "/")
@@ -233,6 +311,32 @@ class DataProvider(private val context: Context) {
 
     fun getBookFile(book: BookEntry): File? {
         val normalizedFilePath = book.file.replace("\\", "/").trim().removePrefix("/")
+        
+        // 1. Check SAF chosen Document Tree
+        val savedUri = getSavedLibraryUri()
+        if (savedUri != null) {
+            try {
+                val treeUri = Uri.parse(savedUri)
+                val docFile = findFileInDocumentTree(treeUri, normalizedFilePath)
+                if (docFile != null && docFile.exists() && docFile.isFile) {
+                    val cacheFile = File(context.cacheDir, "tree_cache_${docFile.name}")
+                    if (!cacheFile.exists() || cacheFile.length() != docFile.length()) {
+                        context.contentResolver.openInputStream(docFile.uri)?.use { input ->
+                            cacheFile.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    }
+                    if (cacheFile.exists() && isValidPdf(cacheFile)) {
+                        return cacheFile
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // 2. Normal check paths on device
         val destFile = findFileOnDevice(normalizedFilePath)
         if (destFile != null && destFile.exists() && isValidPdf(destFile)) {
             return destFile

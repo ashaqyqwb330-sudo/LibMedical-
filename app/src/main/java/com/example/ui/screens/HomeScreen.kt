@@ -6,6 +6,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import com.example.data.DataProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -64,6 +67,18 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
     
     var showPinChangeDialog by remember { mutableStateOf(false) }
     var newPinInput by remember { mutableStateOf("") }
+
+    val dataProvider = remember { DataProvider(context) }
+    val isEnhanced = remember(dataProvider) { dataProvider.isEnhancedModeActive() }
+    var showGoldSnackbar by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isEnhanced) {
+        if (isEnhanced) {
+            showGoldSnackbar = true
+            kotlinx.coroutines.delay(3000)
+            showGoldSnackbar = false
+        }
+    }
 
     LaunchedEffect(drawerState.isOpen) {
         if (drawerState.isOpen) {
@@ -625,14 +640,14 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                 ) {
                     IconButton(
                         onClick = {
-                            scope.launch { drawerState.open() }
+                            onNavigate("library_source")
                         },
                         modifier = Modifier
                             .size(44.dp)
                             .background(Color(0x1F162540), RoundedCornerShape(12.dp))
                             .border(1.dp, Secondary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                     ) {
-                        Text("📁", fontSize = 20.sp)
+                        Text("⚙️", fontSize = 20.sp)
                     }
 
                     Text(
@@ -669,8 +684,9 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
+                        val appTitle = if (isEnhanced) "المكتبة الطبية المتقدمة" else "المَكْتَبَة الطِّبِّيَّة العَسْكَرِيَّة"
                         Text(
-                            text = "المَكْتَبَة الطِّبِّيَّة العَسْكَرِيَّة",
+                            text = appTitle,
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextGold,
@@ -1223,6 +1239,41 @@ fun HomeScreen(onNavigate: (String) -> Unit) {
                             }
                         }
                     )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = showGoldSnackbar,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.5.dp, TextGold.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
+                        .testTag("enhanced_library_snackbar"),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFA111A2E)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(text = "✨", fontSize = 18.sp)
+                        Text(
+                            text = "تم تحميل المكتبة الطبية المتقدمة بنجاح!",
+                            color = TextGold,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }

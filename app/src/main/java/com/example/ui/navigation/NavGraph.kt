@@ -63,7 +63,8 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateToCourseDetail = { courseId ->
                     navController.navigate("content_hub/${Uri.encode(courseId)}")
                 },
-                onNavigateToCourseDescriptions = { navController.navigate("course_descriptions") }
+                onNavigateToCourseDescriptions = { navController.navigate("course_descriptions") },
+                onNavigateToLibrarySource = { navController.navigate("library_source") }
             )
         }
 
@@ -371,6 +372,7 @@ fun NavGraph(navController: NavHostController) {
         composable("inventory") { InventoryDashboardScreen(onBack = { navController.popBackStack() }) }
         composable("qr_scanner") { QrScannerScreen(onBack = { navController.popBackStack() }, onNavigateToPdf = { book -> navController.navigate("pdf_viewer/${Uri.encode(book.title)}/${Uri.encode(book.file)}") }) }
         composable("simulation") { SimulationCenterScreen(onBack = { navController.popBackStack() }) }
+        composable("library_source") { LibrarySourceScreen(onBack = { navController.popBackStack() }) }
     }
 }
 // @builder:end

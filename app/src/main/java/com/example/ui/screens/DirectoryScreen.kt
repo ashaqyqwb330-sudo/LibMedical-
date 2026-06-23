@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,7 +77,8 @@ fun DirectoryScreen(
     onNavigateToGeneralsTab2: (String) -> Unit = {},
     onNavigateToChapterTab2: (String, String) -> Unit = { _, _ -> },
     onNavigateToCourseDetail: (String) -> Unit = {},
-    onNavigateToCourseDescriptions: () -> Unit = {}
+    onNavigateToCourseDescriptions: () -> Unit = {},
+    onNavigateToLibrarySource: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
@@ -201,6 +203,20 @@ fun DirectoryScreen(
                         color = TextSecondary,
                         modifier = Modifier.padding(start = 28.dp)
                     )
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.08f))
+                        .clickable { onNavigateToLibrarySource() }
+                        .testTag("directory_settings_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("⚙️", fontSize = 20.sp)
                 }
             }
         }
