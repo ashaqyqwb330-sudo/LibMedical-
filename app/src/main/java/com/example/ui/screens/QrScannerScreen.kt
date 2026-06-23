@@ -203,6 +203,8 @@ fun QrScannerScreen(
 ) {
     val context = LocalContext.current
     val dataProvider = remember { DataProvider(context) }
+    val allBooks by dataProvider.allBooksFlow.collectAsState()
+    val isLoading by dataProvider.isLoading.collectAsState()
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
     var scannedResult by remember { mutableStateOf<String?>(null) }
@@ -232,7 +234,7 @@ fun QrScannerScreen(
             
             if (match != null) {
                 // Find matching books/documents using keywords
-                relatedBooks = dataProvider.allBooks.filter { book ->
+                relatedBooks = allBooks.filter { book ->
                     val titleNormal = book.title.lowercase()
                     val fileNormal = book.file.lowercase()
                     

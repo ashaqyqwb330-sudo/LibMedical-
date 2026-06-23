@@ -54,6 +54,8 @@ fun DiplomaScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
+    val allBooks by repository.allBooksFlow.collectAsState()
+    val isLoading by repository.isLoading.collectAsState()
     val chapters = remember { repository.getChapters() }
     val studyPlanStages = remember { StudyPlanProvider.getStages() }
 
@@ -92,19 +94,19 @@ fun DiplomaScreen(
         if (selectedTabIndex in chapters.indices) chapters[selectedTabIndex] else null
     }
 
-    val currentChapterBooks = remember(currentChapter, repository.allBooks) {
+    val currentChapterBooks = remember(currentChapter, allBooks) {
         currentChapter?.let { ch ->
             val num = ch.id.removePrefix("class").toIntOrNull() ?: 1
-            repository.allBooks.filter { it.chapter == num }
+            allBooks.filter { it.chapter == num }
         } ?: emptyList()
     }
 
-    val booksToShow = remember(showFavoritesOnly, searchQuery, currentChapterBooks, repository.allBooks, bookmarkedCourses) {
+    val booksToShow = remember(showFavoritesOnly, searchQuery, currentChapterBooks, allBooks, bookmarkedCourses) {
         if (showFavoritesOnly) {
-            val favs = repository.allBooks.filter { bookmarkedCourses.contains(it.title) }
+            val favs = allBooks.filter { bookmarkedCourses.contains(it.title) }
             if (searchQuery.isNotBlank()) favs.filter { it.title.contains(searchQuery, ignoreCase = true) } else favs
         } else {
-            if (searchQuery.isNotBlank()) repository.allBooks.filter { it.title.contains(searchQuery, ignoreCase = true) }
+            if (searchQuery.isNotBlank()) allBooks.filter { it.title.contains(searchQuery, ignoreCase = true) }
             else currentChapterBooks
         }
     }
@@ -230,8 +232,8 @@ fun DiplomaScreen(
     val progressPercentage = remember(totalCoursesCount, completedInChapterCount) {
         if (totalCoursesCount > 0) (completedInChapterCount.toFloat() / totalCoursesCount.toFloat()) else 0f
     }
-    val overallProgressPercent = remember(repository.allBooks, completedCourses) {
-        if (repository.allBooks.isNotEmpty()) completedCourses.size.toFloat() / repository.allBooks.size.toFloat() else 0f
+    val overallProgressPercent = remember(allBooks, completedCourses) {
+        if (allBooks.isNotEmpty()) completedCourses.size.toFloat() / allBooks.size.toFloat() else 0f
     }
 
     Column(
@@ -295,10 +297,10 @@ fun DiplomaScreen(
                 onClick = {
                     exportProgressAsPdf(
                         context = context,
-                        totalCount = repository.allBooks.size,
+                        totalCount = allBooks.size,
                         completedCount = completedCourses.size,
                         progressPercent = overallProgressPercent,
-                        books = repository.allBooks,
+                        books = allBooks,
                         completions = completedCourses,
                         namesMap = names
                     )
@@ -537,7 +539,24 @@ fun DiplomaScreen(
         )
 
         // قائمة المقررات
-        if (booksToShow.isEmpty()) {
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = TextGold)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "جاري تحميل وتجهيز المناهج الدراسية العسكرية...",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        } else if (booksToShow.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 Text(
                     text = if (showFavoritesOnly) "لم تقم بإضافة أي مساقات دراسية للمفضلة حتى الآن.\nتصفح المقررات وانقر على النجمة لإضافتها." else "لا توجد نتائج مطابقة لفلترة البحث الجارية.",

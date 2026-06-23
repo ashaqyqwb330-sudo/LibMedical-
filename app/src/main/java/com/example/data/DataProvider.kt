@@ -11,6 +11,14 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.File
 import java.io.IOException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 
 class DataProvider(private val context: Context) {
 
@@ -18,9 +26,51 @@ class DataProvider(private val context: Context) {
         private var memoizedBooks: List<BookEntry>? = null
         private var memoizedUri: String? = null
 
+        private val _allBooksFlow = MutableStateFlow<List<BookEntry>>(emptyList())
+        val allBooksFlow: StateFlow<List<BookEntry>> = _allBooksFlow.asStateFlow()
+
+        private val _isLoading = MutableStateFlow(false)
+        val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+        private var loadJob: Job? = null
+
         fun clearCache() {
             memoizedBooks = null
             memoizedUri = null
+            _allBooksFlow.value = emptyList()
+        }
+    }
+
+    init {
+        loadAllBooksAsync()
+    }
+
+    val allBooksFlow: StateFlow<List<BookEntry>> get() = Companion.allBooksFlow
+    val isLoading: StateFlow<Boolean> get() = Companion.isLoading
+
+    fun loadAllBooksAsync() {
+        val savedUri = getSavedLibraryUri()
+        if (memoizedUri == savedUri && memoizedBooks != null) {
+            _allBooksFlow.value = memoizedBooks!!
+            _isLoading.value = false
+            return
+        }
+
+        synchronized(this) {
+            if (loadJob?.isActive == true) return
+            _isLoading.value = true
+            loadJob = CoroutineScope(Dispatchers.IO + SupervisorJob()).launch {
+                try {
+                    val parsedBooks = loadBooksFromSourceInternal()
+                    memoizedUri = savedUri
+                    memoizedBooks = parsedBooks
+                    _allBooksFlow.value = parsedBooks
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    _isLoading.value = false
+                }
+            }
         }
     }
 
@@ -106,62 +156,64 @@ class DataProvider(private val context: Context) {
         if (memoizedUri == savedUri && memoizedBooks != null) {
             return memoizedBooks!!
         }
+        val parsed = loadBooksFromSourceInternal()
+        memoizedUri = savedUri
+        memoizedBooks = parsed
+        _allBooksFlow.value = parsed
+        return parsed
+    }
 
-        val parsedBooks = run {
-            if (savedUri != null) {
-                try {
-                    val treeUri = Uri.parse(savedUri)
-                    val docFile = findFileInDocumentTree(treeUri, "app_assets_map_v3.json")
-                    if (docFile != null && docFile.exists() && docFile.isFile) {
-                        context.contentResolver.openInputStream(docFile.uri)?.use { inputStream ->
-                            val json = inputStream.bufferedReader().use { it.readText() }
-                            val mapType = object : TypeToken<Map<String, Any>>() {}.type
-                            val map = Gson().fromJson<Map<String, Any>>(json, mapType)
-                            val booksJson = Gson().toJson(map["books"])
-                            val listType = object : TypeToken<List<BookEntry>>() {}.type
-                            val books = Gson().fromJson<List<BookEntry>>(booksJson, listType)
-                            return@run books.map { book ->
-                                book.copy(
-                                    file = book.file.replace("\\", "/"),
-                                    cover_path = book.cover_path.replace("\\", "/")
-                                )
-                            }
+    private fun loadBooksFromSourceInternal(): List<BookEntry> {
+        val savedUri = getSavedLibraryUri()
+        if (savedUri != null) {
+            try {
+                val treeUri = Uri.parse(savedUri)
+                val docFile = findFileInDocumentTree(treeUri, "app_assets_map_v3.json")
+                if (docFile != null && docFile.exists() && docFile.isFile) {
+                    context.contentResolver.openInputStream(docFile.uri)?.use { inputStream ->
+                        val json = inputStream.bufferedReader().use { it.readText() }
+                        val mapType = object : TypeToken<Map<String, Any>>() {}.type
+                        val map = Gson().fromJson<Map<String, Any>>(json, mapType)
+                        val booksJson = Gson().toJson(map["books"])
+                        val listType = object : TypeToken<List<BookEntry>>() {}.type
+                        val books = Gson().fromJson<List<BookEntry>>(booksJson, listType)
+                        return books.map { book ->
+                            book.copy(
+                                file = book.file.replace("\\", "/"),
+                                cover_path = book.cover_path.replace("\\", "/")
+                            )
                         }
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
-            }
-
-            val baseDir = activeBaseDir
-            val enhancedDir = File(ENHANCED_LIBRARY_PATH)
-            if (enhancedDir.exists() && File(enhancedDir, "app_assets_map_v3.json").exists()) {
-                val jsonFile = File(enhancedDir, "app_assets_map_v3.json")
-                try {
-                    val json = jsonFile.readText()
-                    val mapType = object : TypeToken<Map<String, Any>>() {}.type
-                    val map = Gson().fromJson<Map<String, Any>>(json, mapType)
-                    val booksJson = Gson().toJson(map["books"])
-                    val listType = object : TypeToken<List<BookEntry>>() {}.type
-                    val books = Gson().fromJson<List<BookEntry>>(booksJson, listType)
-                    return@run books.map { book ->
-                        book.copy(
-                            file = book.file.replace("\\", "/"),
-                            cover_path = book.cover_path.replace("\\", "/")
-                        )
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    return@run loadFallbackBooks(baseDir)
-                }
-            } else {
-                return@run loadFallbackBooks(baseDir)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
 
-        memoizedUri = savedUri
-        memoizedBooks = parsedBooks
-        return parsedBooks
+        val baseDir = activeBaseDir
+        val enhancedDir = File(ENHANCED_LIBRARY_PATH)
+        if (enhancedDir.exists() && File(enhancedDir, "app_assets_map_v3.json").exists()) {
+            val jsonFile = File(enhancedDir, "app_assets_map_v3.json")
+            try {
+                val json = jsonFile.readText()
+                val mapType = object : TypeToken<Map<String, Any>>() {}.type
+                val map = Gson().fromJson<Map<String, Any>>(json, mapType)
+                val booksJson = Gson().toJson(map["books"])
+                val listType = object : TypeToken<List<BookEntry>>() {}.type
+                val books = Gson().fromJson<List<BookEntry>>(booksJson, listType)
+                return books.map { book ->
+                    book.copy(
+                        file = book.file.replace("\\", "/"),
+                        cover_path = book.cover_path.replace("\\", "/")
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return loadFallbackBooks(baseDir)
+            }
+        } else {
+            return loadFallbackBooks(baseDir)
+        }
     }
 
     private fun loadFallbackBooks(baseDir: File?): List<BookEntry> {

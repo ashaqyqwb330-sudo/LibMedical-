@@ -53,6 +53,8 @@ fun SearchScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { DataProvider(context) }
+    val allBooks by repository.allBooksFlow.collectAsState()
+    val isLoading by repository.isLoading.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     
     var activeTab by remember { mutableIntStateOf(0) } // 0: Search textbooks, 1: AI Assistant
@@ -61,11 +63,11 @@ fun SearchScreen(
     var query by remember { mutableStateOf("") }
     var selectedBook by remember { mutableStateOf<BookEntry?>(null) }
     
-    val results = remember(query) {
+    val results = remember(query, allBooks) {
         if (query.isBlank()) {
             emptyList()
         } else {
-            repository.allBooks.filter { 
+            allBooks.filter { 
                 it.title.contains(query, ignoreCase = true) ||
                 it.file.contains(query, ignoreCase = true)
             }
@@ -84,7 +86,7 @@ fun SearchScreen(
         coroutineScope.launch {
             try {
                 // Synthesize active books listing for Gemini context
-                val booksContext = repository.allBooks.mapIndexed { index, b ->
+                val booksContext = allBooks.mapIndexed { index, b ->
                     "${index + 1}. العنوان: \"${b.title}\" | الفصل رقم: ${b.chapter} | ملف القراءة: ${b.file}"
                 }.joinToString("\n")
 
@@ -322,7 +324,22 @@ fun SearchScreen(
 
                     if (searchMode == 0) {
                         // LOCAL TITLE MATCHING VIEW
-                        if (query.isBlank()) {
+                        if (isLoading) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator(color = TextGold)
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "جاري تحميل وتجهيز المناهج الدراسية العسكرية...",
+                                        color = TextSecondary,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                        } else if (query.isBlank()) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
