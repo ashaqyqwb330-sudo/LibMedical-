@@ -21,13 +21,18 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.data.DataProvider
+import com.example.model.BookEntry
 import com.example.ui.theme.TextGold
 import kotlin.math.sin
 
@@ -42,6 +47,7 @@ fun Book3DCard(
     height: Dp = 220.dp
 ) {
     val view = LocalView.current
+    val context = LocalContext.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -99,6 +105,23 @@ fun Book3DCard(
         getBookEmoji(bookTitle)
     }
 
+    val dataProvider = remember { DataProvider(context) }
+    var isLoadFailed by remember { mutableStateOf(false) }
+
+    // البحث الديناميكي عن الغلاف (SAF أو جهاز أو assets)
+    val coverImageSource = remember(coverPath) {
+        if (!coverPath.isNullOrEmpty()) {
+            val dummyBook = BookEntry(
+                chapter = 1,
+                title = bookTitle,
+                type = "",
+                file = "",
+                cover_path = coverPath
+            )
+            dataProvider.getBookCover(dummyBook)
+        } else null
+    }
+
     Box(
         modifier = modifier
             .width(width)
@@ -111,7 +134,7 @@ fun Book3DCard(
                 indication = null
             ) { onClick() }
     ) {
-        // خلفية الكتاب (تدرج داكن)
+        // خلفية الكتاب الأساسية (تدرج داكن)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -127,6 +150,33 @@ fun Book3DCard(
                     )
                 )
         )
+
+        // تحميل وعرض صورة الغلاف باستخدام Coil إن وجدت
+        if (coverImageSource != null && !isLoadFailed) {
+            AsyncImage(
+                model = coverImageSource,
+                contentDescription = bookTitle,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                onError = { isLoadFailed = true },
+                onSuccess = { isLoadFailed = false }
+            )
+
+            // طبقة تظليل تدرجية داكنة فوق الصورة لضمان خطوط العنوان واضحة ومقروءة بالكامل
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.4f),
+                                Color.Black.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
+            )
+        }
 
         // توهج نيون متحرك
         Box(
@@ -172,23 +222,28 @@ fun Book3DCard(
         ) {
             Spacer(modifier = Modifier.height(4.dp))
 
-            // أيقونة المقرر في دائرة متوهجة
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                TextGold.copy(alpha = 0.2f),
-                                Color.Transparent
+            // لا نعرض الإيموجي الكبير إلا إذا لم يكن هناك صورة غلاف أو فشل تحميلها
+            if (coverImageSource == null || isLoadFailed) {
+                // أيقونة المقرر في دائرة متوهجة برّاقة
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    TextGold.copy(alpha = 0.2f),
+                                    Color.Transparent
+                                )
                             )
                         )
-                    )
-                    .border(1.dp, TextGold.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(emoji, fontSize = 28.sp)
+                        .border(1.dp, TextGold.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(emoji, fontSize = 28.sp)
+                }
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
 
             // عنوان الكتاب
@@ -203,7 +258,7 @@ fun Book3DCard(
                 lineHeight = 17.sp,
                 style = androidx.compose.ui.text.TextStyle(
                     shadow = Shadow(
-                        color = Color.Black.copy(alpha = 0.5f),
+                        color = Color.Black.copy(alpha = 0.8f),
                         offset = Offset(1f, 2f),
                         blurRadius = 4f
                     )

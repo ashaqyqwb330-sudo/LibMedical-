@@ -179,8 +179,8 @@ fun ChapterScreen(
                                     shelves[shelfIndex].forEach { item ->
                                         Book3DCard(
                                             bookTitle = item.title,
-                                            coverPath = null,
-                                            activeBaseDir = null,
+                                            coverPath = item.coverPath,
+                                            activeBaseDir = repository.activeBaseDir,
                                             onClick = {
                                                 if (isTab2 && onNavigateToCourseDetail != null) {
                                                     onNavigateToCourseDetail(item.title.replace(" ", "_"))

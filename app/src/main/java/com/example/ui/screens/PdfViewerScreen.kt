@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.graphics.Bitmap
+import android.net.Uri
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import android.widget.Toast
@@ -174,12 +175,28 @@ fun PdfViewerScreen(
         errorMessage = null
         withContext(Dispatchers.IO) {
             try {
-                // Find file on device or asset cache using the mock BookEntry
+                // Find file on device or SAF directly using zero-copy
                 val dummyBook = BookEntry(chapter = 1, title = bookTitle, type = "", file = bookFilePath, cover_path = "")
-                val file = repository.getBookFile(dummyBook)
+                val resolvedObj = repository.getBookFileOrUri(dummyBook)
                 
-                if (file != null && file.exists()) {
-                    val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+                var pfd: ParcelFileDescriptor? = null
+                if (resolvedObj != null) {
+                    pfd = when (resolvedObj) {
+                        is File -> ParcelFileDescriptor.open(resolvedObj, ParcelFileDescriptor.MODE_READ_ONLY)
+                        is Uri -> context.contentResolver.openFileDescriptor(resolvedObj, "r")
+                        else -> null
+                    }
+                }
+                
+                // Fallback to old cache copy behavior if zero-copy is unavailable
+                if (pfd == null) {
+                    val file = repository.getBookFile(dummyBook)
+                    if (file != null && file.exists()) {
+                        pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+                    }
+                }
+                
+                if (pfd != null) {
                     val renderer = PdfRenderer(pfd)
                     
                     // Register the book viewed in our cache/local storage

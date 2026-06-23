@@ -309,6 +309,94 @@ class DataProvider(private val context: Context) {
         }
     }
 
+    fun getBookCover(book: BookEntry): Any? {
+        val normalizedCoverPath = book.cover_path.replace("\\", "/").trim().removePrefix("/")
+        if (normalizedCoverPath.isEmpty()) return null
+
+        // 1. Check SAF chosen Document Tree
+        val savedUri = getSavedLibraryUri()
+        if (savedUri != null) {
+            try {
+                val treeUri = Uri.parse(savedUri)
+                val docFile = findFileInDocumentTree(treeUri, normalizedCoverPath)
+                if (docFile != null && docFile.exists() && docFile.isFile) {
+                    return docFile.uri
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // 2. Normal check paths on device
+        val destFile = findFileOnDevice(normalizedCoverPath)
+        if (destFile != null && destFile.exists() && destFile.isFile) {
+            return destFile
+        }
+
+        // 3. Fallback to assets if it exists
+        try {
+            val assetPath = "data/$normalizedCoverPath"
+            context.assets.open(assetPath).use {
+                return "file:///android_asset/$assetPath"
+            }
+        } catch (e: Exception) {
+            // ignore
+        }
+
+        return null
+    }
+
+    fun getBookFileOrUri(book: BookEntry): Any? {
+        val normalizedFilePath = book.file.replace("\\", "/").trim().removePrefix("/")
+        
+        // 1. Check SAF chosen Document Tree
+        val savedUri = getSavedLibraryUri()
+        if (savedUri != null) {
+            try {
+                val treeUri = Uri.parse(savedUri)
+                val docFile = findFileInDocumentTree(treeUri, normalizedFilePath)
+                if (docFile != null && docFile.exists() && docFile.isFile) {
+                    return docFile.uri // Returns content Uri directly for 100% speed!
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // 2. Normal check paths on device
+        val destFile = findFileOnDevice(normalizedFilePath)
+        if (destFile != null && destFile.exists() && isValidPdf(destFile)) {
+            return destFile
+        }
+        val cachedFile = extractAssetToCache("data/$normalizedFilePath")
+        if (cachedFile != null && cachedFile.exists() && isValidPdf(cachedFile)) {
+            return cachedFile
+        }
+
+        // Generate fallback PDF on-the-fly!
+        val generatedFile = File(context.cacheDir, "gen_${normalizedFilePath.substringAfterLast("/")}")
+        if (generatedFile.exists() && isValidPdf(generatedFile)) {
+            return generatedFile
+        } else if (generatedFile.exists()) {
+            try {
+                generatedFile.delete()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        try {
+            generateFallbackPdf(book.title, generatedFile)
+            if (generatedFile.exists() && isValidPdf(generatedFile)) {
+                return generatedFile
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return null
+    }
+
     fun getBookFile(book: BookEntry): File? {
         val normalizedFilePath = book.file.replace("\\", "/").trim().removePrefix("/")
         
@@ -880,30 +968,41 @@ class DataProvider(private val context: Context) {
         val (_, _, devices) = getBooksInChapter(chapterId)
         val subjects = devices[device] ?: return emptyList()
         
-        val grouped = mutableMapOf<String, String>()
+        val grouped = mutableMapOf<String, BookEntry>()
         subjects.forEach { book ->
             val titleWithoutDevice = book.title.substringBeforeLast(" - $device").substringBeforeLast(" - ")
             val cleanTitle = titleWithoutDevice.replace(Regex("\\s*\\((النظري|العملي|المرجع)\\)"), "").trim()
-            val pdfPath = book.directPdf ?: book.file.replace("\\", "/")
-            grouped[cleanTitle] = pdfPath
+            grouped[cleanTitle] = book
         }
-        return grouped.map { DirectSubjectItem(it.key, it.value) }.sortedBy { it.title }
+        return grouped.map { 
+            DirectSubjectItem(
+                title = it.key,
+                directPdfPath = it.value.directPdf ?: it.value.file.replace("\\", "/"),
+                coverPath = it.value.cover_path
+            ) 
+        }.sortedBy { it.title }
     }
 
     fun getGeneralSubjectsDirect(chapterId: String): List<DirectSubjectItem> {
         val (_, generals, _) = getBooksInChapter(chapterId)
         
-        val grouped = mutableMapOf<String, String>()
+        val grouped = mutableMapOf<String, BookEntry>()
         generals.forEach { book ->
             val cleanTitle = book.title.replace(Regex("\\s*\\((النظري|العملي|المرجع)\\)"), "").trim()
-            val pdfPath = book.directPdf ?: book.file.replace("\\", "/")
-            grouped[cleanTitle] = pdfPath
+            grouped[cleanTitle] = book
         }
-        return grouped.map { DirectSubjectItem(it.key, it.value) }.sortedBy { it.title }
+        return grouped.map { 
+            DirectSubjectItem(
+                title = it.key,
+                directPdfPath = it.value.directPdf ?: it.value.file.replace("\\", "/"),
+                coverPath = it.value.cover_path
+            ) 
+        }.sortedBy { it.title }
     }
 }
 
 data class DirectSubjectItem(
     val title: String,
-    val directPdfPath: String
+    val directPdfPath: String,
+    val coverPath: String? = null
 )

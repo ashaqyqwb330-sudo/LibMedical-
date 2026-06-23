@@ -153,8 +153,8 @@ fun ChapterTab2Screen(
                                     shelves[shelfIndex].forEach { item ->
                                         Book3DCard(
                                             bookTitle = item.title,
-                                            coverPath = null,
-                                            activeBaseDir = null,
+                                            coverPath = item.coverPath,
+                                            activeBaseDir = repository.activeBaseDir,
                                             onClick = {
                                                 selectedGeneralSubject = item
                                             }
