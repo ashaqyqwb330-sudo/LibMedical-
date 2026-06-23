@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.request.CachePolicy
 import com.example.data.DataProvider
 import com.example.model.BookEntry
 import com.example.ui.theme.TextGold
@@ -106,10 +108,11 @@ fun Book3DCard(
     }
 
     val dataProvider = remember { DataProvider(context) }
-    var isLoadFailed by remember { mutableStateOf(false) }
+    var isLoadFailed by remember(coverPath, bookTitle) { mutableStateOf(false) }
 
-    // البحث الديناميكي عن الغلاف (SAF أو جهاز أو assets)
-    val coverImageSource = remember(coverPath) {
+    // البحث الديناميكي عن الغلاف (SAF أو جهاز أو assets) كأغلفة حقيقية أو عبر البحث الذكي بالاسم
+    val coverImageSource = remember(coverPath, bookTitle) {
+        var resolved: Any? = null
         if (!coverPath.isNullOrEmpty()) {
             val dummyBook = BookEntry(
                 chapter = 1,
@@ -118,8 +121,48 @@ fun Book3DCard(
                 file = "",
                 cover_path = coverPath
             )
-            dataProvider.getBookCover(dummyBook)
-        } else null
+            resolved = dataProvider.getBookCover(dummyBook)
+        }
+        if (resolved == null) {
+            resolved = dataProvider.findCoverFile(bookTitle)
+        }
+        resolved
+    }
+
+    // التحميل التدريجي (Progressive Loading): تحميل نموذج صغير مسبقاً ثم الترقية للجودة الكاملة
+    val tempCoverSource = remember(coverPath, bookTitle) {
+        dataProvider.getTempCoverPath(bookTitle)
+    }
+
+    var currentImageRequest by remember(coverImageSource, tempCoverSource) {
+        mutableStateOf<Any?>(
+            if (tempCoverSource != null) {
+                ImageRequest.Builder(context)
+                    .data(tempCoverSource)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .build()
+            } else if (coverImageSource != null) {
+                ImageRequest.Builder(context)
+                    .data(coverImageSource)
+                    .size(60, 90) // فك ترميز فائق السرعة وبجودة مخفضة كصورة مصغرة فورية
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .build()
+            } else null
+        )
+    }
+
+    LaunchedEffect(coverImageSource, tempCoverSource) {
+        if (coverImageSource != null) {
+            // ترقية الطلب بسلاسة ليكون بالجودة الكاملة مع تأثير Crossfade ناعم
+            currentImageRequest = ImageRequest.Builder(context)
+                .data(coverImageSource)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .crossfade(400)
+                .build()
+        }
     }
 
     Box(
@@ -151,10 +194,10 @@ fun Book3DCard(
                 )
         )
 
-        // تحميل وعرض صورة الغلاف باستخدام Coil إن وجدت
-        if (coverImageSource != null && !isLoadFailed) {
+        // تحميل وعرض صورة الغلاف باستخدام Coil إن وجدت بأسلوب فائق السلاسة والسرعة
+        if (currentImageRequest != null && !isLoadFailed) {
             AsyncImage(
-                model = coverImageSource,
+                model = currentImageRequest,
                 contentDescription = bookTitle,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
